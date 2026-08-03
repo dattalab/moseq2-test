@@ -1,0 +1,65 @@
+name: Refresh trusted fixture cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "manifests/fixtures/**"
+      - ".github/workflows/refresh-cache.yml"
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-fixture-cache
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out trusted default-branch source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
+      - name: Install framework from its wheel
+        run: |
+          uv build --wheel
+          uv venv "${{ runner.temp }}/controller"
+          uv pip install --python "${{ runner.temp }}/controller/bin/python" dist/moseq2_test-*.whl
+      - name: Compute immutable cache key
+        id: fixture-key
+        run: |
+          digest=$(sha256sum manifests/fixtures/historical-v1.yml manifests/fixtures/pipeline-smoke-v1.yml | sha256sum | cut -d' ' -f1)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - name: Restore the matching trusted cache
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/fixture-cache
+          key: moseq2-test-fixtures-${{ steps.fixture-key.outputs.digest }}
+      - name: Fetch anonymously and verify exact fixture hashes
+        run: |
+          controller="${{ runner.temp }}/controller/bin/moseq2-test"
+          "$controller" --cache-dir "${{ runner.temp }}/fixture-cache" data fetch --fixture-set historical-v1 --fixture-set pipeline-smoke-v1
+          "$controller" --offline --cache-dir "${{ runner.temp }}/fixture-cache" data verify --fixture-set historical-v1 --fixture-set pipeline-smoke-v1
+      - name: Save only from this trusted workflow
+        if: ${{ steps.restore.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/fixture-cache
+          key: moseq2-test-fixtures-${{ steps.fixture-key.outputs.digest }}
+

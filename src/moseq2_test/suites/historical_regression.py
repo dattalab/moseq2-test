@@ -466,6 +466,7 @@ def run_historical_regression(options: Any, profile: SuiteProfile) -> tuple[Path
                 workspace=sandbox.build / "candidate-workspace",
                 output=sandbox.build / "candidate-output",
                 allow_dirty=options.allow_dirty_source,
+                build_python=base_python,
             )
             candidate_records.extend(built.candidates)
         candidate_names = [canonical_package(item.package) for item in candidate_records]
@@ -476,9 +477,10 @@ def run_historical_regression(options: Any, profile: SuiteProfile) -> tuple[Path
             candidate_by_name.get(canonical_package(item.package), item)
             for item in baseline_candidates
         ]
-        target_python = _create_layered_target(base_python, sandbox, candidate_records, timeout)
-        if candidate_records:
-            _install_test_tools(target_python, base_prefix, timeout)
+        target_python = _create_layered_target(
+            base_python, sandbox, candidate_records, timeout, force=True
+        )
+        _install_test_tools(target_python, base_prefix, timeout)
 
         fixture_mirror_value = os.environ.get("MOSEQ2_TEST_FIXTURE_MIRROR")
         fixture_mirror = Path(fixture_mirror_value) if fixture_mirror_value else None

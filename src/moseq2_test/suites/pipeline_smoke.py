@@ -1264,6 +1264,7 @@ def run_pipeline_smoke(options: Any, profile: SuiteProfile) -> tuple[Path, int]:
                 workspace=sandbox.build / "candidate-workspace",
                 output=sandbox.build / "candidate-output",
                 allow_dirty=options.allow_dirty_source,
+                build_python=base_python,
             )
             candidate_records.extend(built.candidates)
         candidate_names = [canonical_package(item.package) for item in candidate_records]

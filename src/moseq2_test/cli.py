@@ -226,6 +226,7 @@ def candidates_build(
             workspace=options.workspace,
             output=options.output_dir / "candidate-build",
             allow_dirty=allow_dirty_source,
+            build_python=options.target_python,
         )
     except Moseq2TestError as error:
         _abort(error)

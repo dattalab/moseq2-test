@@ -233,9 +233,14 @@ def _apply_test_sources(records: list[CandidateRecord], values: list[str]) -> li
 
 
 def _create_layered_target(
-    base_python: Path, sandbox: Sandbox, candidates: list[CandidateRecord], timeout: int
+    base_python: Path,
+    sandbox: Sandbox,
+    candidates: list[CandidateRecord],
+    timeout: int,
+    *,
+    force: bool = False,
 ) -> Path:
-    if not candidates:
+    if not candidates and not force:
         return base_python
     target = sandbox.target_env / "runtime"
     completed = subprocess.run(
@@ -500,6 +505,7 @@ def run_install_smoke(options: Any, profile: SuiteProfile) -> tuple[Path, int]:
                 workspace=sandbox.build / "candidate-workspace",
                 output=sandbox.build / "candidate-output",
                 allow_dirty=options.allow_dirty_source,
+                build_python=base_python,
             )
             candidate_records.extend(built.candidates)
             names = [canonical_package(item.package) for item in candidate_records]

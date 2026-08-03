@@ -134,6 +134,7 @@ def build_sources(
     workspace: Path,
     output: Path,
     allow_dirty: bool,
+    build_python: Path | None = None,
 ) -> CandidateSet:
     if not assignments:
         raise InvalidConfiguration("provide at least one --source NAME=PATH")
@@ -153,9 +154,12 @@ def build_sources(
             commit, dirty = export_source(source, export, allow_dirty=allow_dirty)
             wheel_output = sandbox.wheelhouse / name
             wheel_output.mkdir()
+            python = build_python or Path(sys.executable)
+            if not python.is_file():
+                raise MissingInput(f"candidate build Python does not exist: {python}")
             completed = subprocess.run(
                 [
-                    sys.executable,
+                    str(python),
                     "-m",
                     "build",
                     "--sdist",
@@ -184,7 +188,7 @@ def build_sources(
             )
             if completed.returncode != 0:
                 raise InvalidConfiguration(
-                    f"wheel build failed for {name}; see sandbox {sandbox.root}"
+                    f"wheel build failed for {name} with {python}; see sandbox {sandbox.root}"
                 )
             wheels = list(wheel_output.glob("*.whl"))
             if len(wheels) != 1:

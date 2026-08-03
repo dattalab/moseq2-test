@@ -14,6 +14,7 @@ from moseq2_test.candidates import (
     verify_installed_locations,
 )
 from moseq2_test.errors import InvalidConfiguration
+from moseq2_test.models import CandidateKind, CandidateRecord, CandidateSet
 
 
 def synthetic_source(root: Path) -> Path:
@@ -86,6 +87,24 @@ def test_misnamed_wheel_is_rejected(tmp_path: Path) -> None:
         archive.writestr("different/__init__.py", "")
     with pytest.raises(InvalidConfiguration, match="expected"):
         inspect_wheel(wheel, expected_package="moseq2-extract")
+
+
+def test_candidate_manifest_with_wrong_wheel_hash_is_rejected(tmp_path: Path) -> None:
+    wheel = tmp_path / "moseq2_extract-1.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("moseq2_extract/__init__.py", "")
+    candidate_set = CandidateSet(
+        candidates=[
+            CandidateRecord(
+                package="moseq2-extract",
+                kind=CandidateKind.WHEEL,
+                location=str(wheel),
+                sha256="0" * 64,
+            )
+        ]
+    )
+    with pytest.raises(InvalidConfiguration, match="hash differs"):
+        verify_candidate_set(candidate_set, base=tmp_path)
 
 
 def test_installed_import_cannot_resolve_to_source_tree(tmp_path: Path) -> None:

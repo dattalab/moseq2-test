@@ -1,0 +1,139 @@
+name: MoSeq2 installed-package tests
+description: Build a MoSeq2 source candidate as a wheel and exercise its affected regression tier.
+author: Datta Lab
+
+inputs:
+  package:
+    description: Canonical MoSeq2 package name.
+    required: true
+  source:
+    description: Git checkout to export and build; normally github.workspace.
+    required: true
+  tier:
+    description: pull-request, install-smoke, historical-regression, pipeline-smoke, or baseline.
+    required: false
+    default: pull-request
+  target-python:
+    description: Python 3.7 interpreter in the sealed target environment.
+    required: true
+  cache-dir:
+    description: Verified fixture-cache directory.
+    required: false
+    default: ""
+  output-dir:
+    description: Durable result directory.
+    required: false
+    default: ""
+  offline:
+    description: Require pre-populated fixtures and prohibit downloads.
+    required: false
+    default: "false"
+
+outputs:
+  candidate-set:
+    description: Absolute path to the generated checksummed candidate manifest.
+    value: ${{ steps.candidate.outputs.candidate-set }}
+  results:
+    description: Absolute path containing all suite run directories.
+    value: ${{ steps.run.outputs.results }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install controller Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: "3.12"
+    - name: Install uv without a shared cache
+      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      with:
+        enable-cache: false
+    - name: Build and install the pinned action checkout
+      shell: bash
+      env:
+        ACTION_ROOT: ${{ github.action_path }}
+        CONTROLLER_ENV: ${{ runner.temp }}/moseq2-test-action-controller
+      run: |
+        set -euo pipefail
+        uv build --wheel --project "$ACTION_ROOT" --out-dir "$RUNNER_TEMP/moseq2-test-action-dist"
+        uv venv "$CONTROLLER_ENV" --python 3.12
+        wheel=$(find "$RUNNER_TEMP/moseq2-test-action-dist" -maxdepth 1 -type f -name 'moseq2_test-*.whl' -print -quit)
+        test -n "$wheel"
+        uv pip install --python "$CONTROLLER_ENV/bin/python" "$wheel"
+        "$CONTROLLER_ENV/bin/moseq2-test" --version
+    - name: Validate untrusted inputs and host capacity
+      shell: bash
+      env:
+        PACKAGE: ${{ inputs.package }}
+        SOURCE: ${{ inputs.source }}
+        TIER: ${{ inputs.tier }}
+        TARGET_PYTHON: ${{ inputs.target-python }}
+        WORKSPACE_ROOT: ${{ runner.temp }}/moseq2-test-workspace
+        CONTROLLER: ${{ runner.temp }}/moseq2-test-action-controller/bin/moseq2-test
+      run: |
+        set -euo pipefail
+        case "$PACKAGE" in
+          moseq2-extract|moseq2-pca|moseq2-model|moseq2-viz|moseq2-app|pyhsmm-autoregressive) ;;
+          *) echo "unsupported DattaLab integration package: $PACKAGE" >&2; exit 2 ;;
+        esac
+        case "$TIER" in
+          pull-request|install-smoke|historical-regression|pipeline-smoke|baseline) ;;
+          *) echo "unsupported test tier: $TIER" >&2; exit 2 ;;
+        esac
+        test -d "$SOURCE"
+        test -x "$TARGET_PYTHON"
+        "$CONTROLLER" --workspace "$WORKSPACE_ROOT" --target-python "$TARGET_PYTHON" doctor --ci
+    - name: Build the pull-request source with target Python
+      id: candidate
+      shell: bash
+      env:
+        PACKAGE: ${{ inputs.package }}
+        SOURCE: ${{ inputs.source }}
+        TARGET_PYTHON: ${{ inputs.target-python }}
+        CONTROLLER: ${{ runner.temp }}/moseq2-test-action-controller/bin/moseq2-test
+        WORKSPACE_ROOT: ${{ runner.temp }}/moseq2-test-workspace
+        CANDIDATE_ROOT: ${{ runner.temp }}/moseq2-test-candidate
+      run: |
+        set -euo pipefail
+        "$CONTROLLER" \
+          --workspace "$WORKSPACE_ROOT" \
+          --output-dir "$CANDIDATE_ROOT" \
+          --target-python "$TARGET_PYTHON" \
+          candidates build --source "$PACKAGE=$SOURCE"
+        manifest="$CANDIDATE_ROOT/candidate-build/candidates.json"
+        "$CONTROLLER" candidates verify --candidate-set "$manifest"
+        echo "candidate-set=$manifest" >> "$GITHUB_OUTPUT"
+    - name: Run the affected installed-package tier
+      id: run
+      shell: bash
+      env:
+        PACKAGE: ${{ inputs.package }}
+        TIER: ${{ inputs.tier }}
+        TARGET_PYTHON: ${{ inputs.target-python }}
+        CACHE_DIR: ${{ inputs.cache-dir }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        OFFLINE: ${{ inputs.offline }}
+        CANDIDATE_SET: ${{ steps.candidate.outputs.candidate-set }}
+        CONTROLLER: ${{ runner.temp }}/moseq2-test-action-controller/bin/moseq2-test
+        WORKSPACE_ROOT: ${{ runner.temp }}/moseq2-test-workspace
+      run: |
+        set -euo pipefail
+        if [ -z "$CACHE_DIR" ]; then CACHE_DIR="$RUNNER_TEMP/moseq2-test-cache"; fi
+        if [ -z "$OUTPUT_DIR" ]; then OUTPUT_DIR="$RUNNER_TEMP/moseq2-test-results"; fi
+        mkdir -p "$OUTPUT_DIR"
+        common=(--cache-dir "$CACHE_DIR" --workspace "$WORKSPACE_ROOT" --output-dir "$OUTPUT_DIR" --target-python "$TARGET_PYTHON" --no-color)
+        if [ "$OFFLINE" = true ]; then common+=(--offline); elif [ "$OFFLINE" != false ]; then echo "offline must be true or false" >&2; exit 2; fi
+        run_profile() {
+          "$CONTROLLER" "${common[@]}" run "$@" --candidate-set "$CANDIDATE_SET" --keep-sandbox failure
+        }
+        run_profile install-smoke
+        if [ "$TIER" != install-smoke ]; then
+          run_profile historical-regression --package "$PACKAGE"
+        fi
+        if [ "$TIER" = pipeline-smoke ] || [ "$TIER" = baseline ] || [ "$TIER" = pull-request ]; then
+          case "$PACKAGE" in
+            moseq2-extract|moseq2-pca) run_profile pipeline-smoke --through pca ;;
+            *) run_profile pipeline-smoke --start-at model ;;
+          esac
+        fi
+        echo "results=$OUTPUT_DIR" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,112 @@
+name: Framework CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: framework-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installed-wheel:
+    name: Installed wheel / Python ${{ matrix.python }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
+      - name: Build source and wheel artifacts
+        run: uv build
+      - name: Create locked test environment without installing the source tree
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/moseq2-test-installed
+        run: |
+          uv sync --frozen --all-extras --dev --no-install-project
+          wheel=$(find dist -maxdepth 1 -type f -name 'moseq2_test-*.whl' -print -quit)
+          test -n "$wheel"
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" --no-deps "$wheel"
+      - name: Prove imports resolve to the installed wheel
+        env:
+          INSTALLED_PYTHON: ${{ runner.temp }}/moseq2-test-installed/bin/python
+          REPOSITORY_ROOT: ${{ github.workspace }}
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$INSTALLED_PYTHON" -I - <<'PY'
+          import os
+          from pathlib import Path
+          import moseq2_test
+          installed = Path(moseq2_test.__file__).resolve()
+          repository = Path(os.environ["REPOSITORY_ROOT"]).resolve()
+          print(installed)
+          if installed == repository or repository in installed.parents:
+              raise SystemExit("moseq2_test imported from the checkout")
+          PY
+          "$INSTALLED_PYTHON" -m moseq2_test --version
+      - name: Test the installed artifact
+        env:
+          PYTHONNOUSERSITE: "1"
+        run: |
+          "${{ runner.temp }}/moseq2-test-installed/bin/python" -m pytest tests
+
+  quality-and-contracts:
+    name: Quality, schemas, and negative contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
+      - name: Install locked development environment
+        run: uv sync --frozen --all-extras --dev
+      - name: Lint and type-check
+        run: |
+          uv run ruff check .
+          uv run mypy
+      - name: Verify security and failure contracts
+        run: |
+          uv run pytest -q \
+            tests/test_candidates.py::test_candidate_manifest_with_wrong_wheel_hash_is_rejected \
+            tests/test_data.py::test_corrupt_cache_is_rejected_offline \
+            tests/test_failure_policy.py::test_unknown_failure_cannot_hide_behind_expected_count \
+            tests/test_failure_policy.py::test_exact_known_failure_is_accepted_but_missing_deterministic_failures_are_not \
+            tests/test_certification.py::test_semantic_difference_fails_certification \
+            tests/test_certification.py::test_unknown_failure_and_unexpected_pass_fail_certification
+      - name: Build distributable artifacts
+        run: uv build
+      - name: Upload build artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: moseq2-test-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7

@@ -65,7 +65,31 @@ def run_profile(options: RunOptions) -> SuiteRun:
     raise ProfileUnavailable(f"profile {selected.name!r} has no installed runner yet")
 
 
-def certify_baseline(**_options: object) -> Path:
-    raise ProfileUnavailable(
-        "baseline certification is defined but unavailable until profiles are migrated"
+def certify_baseline(
+    *,
+    baseline_lock: str,
+    fixture_sets: list[str],
+    cache_dir: Path,
+    workspace: Path,
+    output_dir: Path,
+    executor: str,
+    target_python: Path | None,
+    container: str | None,
+    offline: bool,
+) -> Path:
+    """Run the immutable A-C suite matrix and evaluate every baseline requirement."""
+
+    from moseq2_test.certification import certify
+
+    return certify(
+        baseline_lock=baseline_lock,
+        fixture_sets=fixture_sets,
+        cache_dir=cache_dir,
+        workspace=workspace,
+        output_dir=output_dir,
+        executor=executor,
+        target_python=target_python,
+        container=container,
+        offline=offline,
+        runner=run_profile,
     )
