@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "CandidateKind": {
+      "enum": [
+        "source",
+        "wheel"
+      ],
+      "title": "CandidateKind",
+      "type": "string"
+    },
+    "CandidateRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "dirty": {
+          "default": false,
+          "title": "Dirty",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/CandidateKind"
+        },
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "package": {
+          "title": "Package",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "source_commit": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Commit"
+        },
+        "test_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Test Source"
+        }
+      },
+      "required": [
+        "package",
+        "kind",
+        "location"
+      ],
+      "title": "CandidateRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "candidates": {
+      "items": {
+        "$ref": "#/$defs/CandidateRecord"
+      },
+      "title": "Candidates",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "candidates"
+  ],
+  "title": "CandidateSet",
+  "type": "object"
+}

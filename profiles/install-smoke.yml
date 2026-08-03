@@ -1,0 +1,11 @@
+schema_version: 1
+name: install-smoke
+implemented: false
+owner: dattalab/moseq2-test maintainers
+description: Build, install, import, entry-point, and compiled-operation checks for eight locked packages.
+packages: [moseq2-extract, moseq2-pca, moseq2-model, moseq2-viz, moseq2-app, pybasicbayes, pyhsmm, pyhsmm-autoregressive]
+fixture_sets: []
+stages: [build, install, inspect, smoke]
+resources: {cpu: 2, memory_gib: 4, disk_gib: 3, timeout_seconds: 1800}
+steps: []
+

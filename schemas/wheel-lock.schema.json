@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "WheelRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "abi_tag": {
+          "title": "Abi Tag",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "package": {
+          "title": "Package",
+          "type": "string"
+        },
+        "platform_tag": {
+          "title": "Platform Tag",
+          "type": "string"
+        },
+        "python_tag": {
+          "title": "Python Tag",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_archive_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Archive Sha256",
+          "type": "string"
+        },
+        "source_commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Source Commit",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "package",
+        "filename",
+        "version",
+        "sha256",
+        "python_tag",
+        "abi_tag",
+        "platform_tag",
+        "source_commit",
+        "source_archive_sha256"
+      ],
+      "title": "WheelRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "lock_id": {
+      "title": "Lock Id",
+      "type": "string"
+    },
+    "platform": {
+      "title": "Platform",
+      "type": "string"
+    },
+    "python": {
+      "title": "Python",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "wheels": {
+      "items": {
+        "$ref": "#/$defs/WheelRecord"
+      },
+      "title": "Wheels",
+      "type": "array"
+    }
+  },
+  "required": [
+    "lock_id",
+    "python",
+    "platform",
+    "wheels"
+  ],
+  "title": "WheelLock",
+  "type": "object"
+}

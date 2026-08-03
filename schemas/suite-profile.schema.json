@@ -1,0 +1,212 @@
+{
+  "$defs": {
+    "ResourceCeilings": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu": {
+          "minimum": 1,
+          "title": "Cpu",
+          "type": "integer"
+        },
+        "disk_gib": {
+          "exclusiveMinimum": 0,
+          "title": "Disk Gib",
+          "type": "number"
+        },
+        "memory_gib": {
+          "exclusiveMinimum": 0,
+          "title": "Memory Gib",
+          "type": "number"
+        },
+        "timeout_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cpu",
+        "memory_gib",
+        "disk_gib",
+        "timeout_seconds"
+      ],
+      "title": "ResourceCeilings",
+      "type": "object"
+    },
+    "SuiteStep": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Command",
+          "type": "array"
+        },
+        "comparator_policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparator Policy"
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "expected_failure": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Failure"
+        },
+        "fixtures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fixtures",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "operation": {
+          "title": "Operation",
+          "type": "string"
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Outputs",
+          "type": "array"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Seconds"
+        }
+      },
+      "required": [
+        "id",
+        "stage",
+        "operation"
+      ],
+      "title": "SuiteStep",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "fixture_sets": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Fixture Sets",
+      "type": "array"
+    },
+    "implemented": {
+      "title": "Implemented",
+      "type": "boolean"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "owner": {
+      "title": "Owner",
+      "type": "string"
+    },
+    "packages": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Packages",
+      "type": "array"
+    },
+    "resources": {
+      "$ref": "#/$defs/ResourceCeilings"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "stages": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Stages",
+      "type": "array"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/SuiteStep"
+      },
+      "title": "Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "implemented",
+    "owner",
+    "description",
+    "packages",
+    "fixture_sets",
+    "stages",
+    "resources",
+    "steps"
+  ],
+  "title": "SuiteProfile",
+  "type": "object"
+}

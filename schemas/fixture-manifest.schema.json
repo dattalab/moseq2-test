@@ -1,0 +1,246 @@
+{
+  "$defs": {
+    "Derivation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Outputs",
+          "type": "array"
+        },
+        "recipe": {
+          "title": "Recipe",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "inputs",
+        "recipe",
+        "outputs"
+      ],
+      "title": "Derivation",
+      "type": "object"
+    },
+    "FixtureObject": {
+      "additionalProperties": false,
+      "properties": {
+        "archive_root": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Archive Root"
+        },
+        "canonical_urls": {
+          "items": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Canonical Urls",
+          "type": "array"
+        },
+        "citation": {
+          "title": "Citation",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "license_id": {
+          "title": "License Id",
+          "type": "string"
+        },
+        "max_members": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Members"
+        },
+        "max_unpacked_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Unpacked Bytes"
+        },
+        "profiles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Profiles",
+          "type": "array"
+        },
+        "provenance_urls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Provenance Urls",
+          "type": "array"
+        },
+        "publication_status": {
+          "$ref": "#/$defs/PublicationStatus"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "trust": {
+          "$ref": "#/$defs/TrustClass"
+        },
+        "unpack": {
+          "default": "none",
+          "enum": [
+            "none",
+            "zip",
+            "tar",
+            "tar.gz"
+          ],
+          "title": "Unpack",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "filename",
+        "size",
+        "sha256",
+        "canonical_urls",
+        "publication_status",
+        "trust",
+        "profiles",
+        "license_id",
+        "citation",
+        "source"
+      ],
+      "title": "FixtureObject",
+      "type": "object"
+    },
+    "PublicationStatus": {
+      "enum": [
+        "approved-by-project-owner",
+        "local-only",
+        "reference-only"
+      ],
+      "title": "PublicationStatus",
+      "type": "string"
+    },
+    "TrustClass": {
+      "enum": [
+        "untrusted",
+        "trusted-baseline",
+        "generated"
+      ],
+      "title": "TrustClass",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "derivations": {
+      "items": {
+        "$ref": "#/$defs/Derivation"
+      },
+      "title": "Derivations",
+      "type": "array"
+    },
+    "fixture_set": {
+      "title": "Fixture Set",
+      "type": "string"
+    },
+    "maintainer": {
+      "title": "Maintainer",
+      "type": "string"
+    },
+    "objects": {
+      "items": {
+        "$ref": "#/$defs/FixtureObject"
+      },
+      "title": "Objects",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "status": {
+      "const": "immutable",
+      "title": "Status",
+      "type": "string"
+    },
+    "terms": {
+      "title": "Terms",
+      "type": "string"
+    }
+  },
+  "required": [
+    "fixture_set",
+    "status",
+    "created_at",
+    "maintainer",
+    "terms",
+    "objects"
+  ],
+  "title": "FixtureManifest",
+  "type": "object"
+}

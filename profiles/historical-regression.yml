@@ -1,0 +1,11 @@
+schema_version: 1
+name: historical-regression
+implemented: false
+owner: dattalab/moseq2-test maintainers
+description: Exact package-owned historical tests at the eight sealed baseline commits.
+packages: [moseq2-extract, moseq2-pca, moseq2-model, moseq2-viz, moseq2-app, pybasicbayes, pyhsmm, pyhsmm-autoregressive]
+fixture_sets: [historical-v1]
+stages: [test]
+resources: {cpu: 2, memory_gib: 6, disk_gib: 3, timeout_seconds: 1800}
+steps: []
+

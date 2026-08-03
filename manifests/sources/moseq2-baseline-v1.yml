@@ -1,0 +1,69 @@
+schema_version: 1
+lock_id: moseq2-baseline-v1
+sources:
+  - name: moseq2-extract
+    repository: https://github.com/dattalab/moseq2-extract.git
+    commit: 39a6f0f88d28fc311c8be96619ee9e53b14d3a96
+    tree: 286142f5b66a86683561bdb0dd912e28164ae6af
+    default_branch: release
+    owner: dattalab
+    license_id: moseq-noncommercial-research
+  - name: moseq2-pca
+    repository: https://github.com/dattalab/moseq2-pca.git
+    commit: a7bdbe179084c5d366290cd04f4ab26ee8387aa0
+    tree: 1c4dc1ec3ceb8cc4829fca377e89fc2de0e1e35d
+    default_branch: release
+    owner: dattalab
+    license_id: moseq-noncommercial-research
+  - name: moseq2-model
+    repository: https://github.com/dattalab/moseq2-model.git
+    commit: c7c1e1f1ff22c8670bcf0d929d4ca3a12d53190d
+    tree: 5e459d6680a5481af2300a79ca0747b614fd4bbb
+    default_branch: release
+    owner: dattalab
+    license_id: moseq-noncommercial-research
+  - name: moseq2-viz
+    repository: https://github.com/dattalab/moseq2-viz.git
+    commit: f571e0ac84cc26cd7f04ea5cf7478657894b02d8
+    tree: 1f2de21369a3318600197da61a56e7ec70eed6af
+    default_branch: release
+    owner: dattalab
+    license_id: moseq-noncommercial-research
+  - name: moseq2-app
+    repository: https://github.com/dattalab/moseq2-app.git
+    commit: 7be1af1f96d7873ff44d6ea5ae45262881d76f9f
+    tree: 0f3d41917a6084f344e52ab22ec4c16ea8a55c1b
+    default_branch: release
+    owner: dattalab
+    license_id: moseq-noncommercial-research
+  - name: pybasicbayes
+    repository: https://github.com/mattjj/pybasicbayes.git
+    commit: 61f65ad6c781288605ec5f7347efcc5dbd73c4fc
+    tree: b4c9f5916fa887be65d096bd311ca7584df4cf08
+    default_branch: master
+    owner: mattjj
+    license_id: MIT
+  - name: pyhsmm
+    repository: https://github.com/mattjj/pyhsmm.git
+    commit: 4e739166746f92bfc968d281f2c1d31e3471409f
+    tree: 53bbfcdec67478501acb8f61a65a3ee5f6b3b2cb
+    default_branch: master
+    owner: mattjj
+    license_id: MIT
+  - name: pyhsmm-autoregressive
+    repository: https://github.com/dattalab/pyhsmm-autoregressive.git
+    commit: 2a4c73c08dcda959b9bac2f03a2b976dabbc37af
+    tree: 3a1afd58c5622816b5326afcfbb36a1354de1078
+    default_branch: master
+    owner: dattalab
+    license_id: GPL-2.0-only
+impact_graph:
+  pybasicbayes: [moseq2-model, moseq2-viz, moseq2-app]
+  pyhsmm: [moseq2-model, moseq2-viz, moseq2-app]
+  pyhsmm-autoregressive: [moseq2-model, moseq2-viz, moseq2-app]
+  moseq2-extract: [moseq2-pca, moseq2-model, moseq2-viz, moseq2-app]
+  moseq2-pca: [moseq2-model, moseq2-viz, moseq2-app]
+  moseq2-model: [moseq2-viz, moseq2-app]
+  moseq2-viz: [moseq2-app]
+  moseq2-app: []
+

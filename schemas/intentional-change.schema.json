@@ -1,0 +1,64 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "affected_artifacts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Affected Artifacts",
+      "type": "array"
+    },
+    "approved_at": {
+      "format": "date-time",
+      "title": "Approved At",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "issue_or_pr": {
+      "title": "Issue Or Pr",
+      "type": "string"
+    },
+    "new_expectation": {
+      "title": "New Expectation",
+      "type": "string"
+    },
+    "old_expectation": {
+      "title": "Old Expectation",
+      "type": "string"
+    },
+    "rationale": {
+      "title": "Rationale",
+      "type": "string"
+    },
+    "regression_test": {
+      "title": "Regression Test",
+      "type": "string"
+    },
+    "reviewer": {
+      "title": "Reviewer",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "old_expectation",
+    "new_expectation",
+    "affected_artifacts",
+    "issue_or_pr",
+    "rationale",
+    "regression_test",
+    "reviewer",
+    "approved_at"
+  ],
+  "title": "IntentionalChange",
+  "type": "object"
+}

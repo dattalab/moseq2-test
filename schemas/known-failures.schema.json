@@ -1,0 +1,155 @@
+{
+  "$defs": {
+    "FailurePolicy": {
+      "enum": [
+        "required_failure",
+        "allowed_failure"
+      ],
+      "title": "FailurePolicy",
+      "type": "string"
+    },
+    "FailureSignature": {
+      "additionalProperties": false,
+      "properties": {
+        "exception": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exception"
+        },
+        "message_regex": {
+          "title": "Message Regex",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message_regex"
+      ],
+      "title": "FailureSignature",
+      "type": "object"
+    },
+    "KnownFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_commits": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Baseline Commits",
+          "type": "object"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "nodeid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nodeid"
+        },
+        "outcome": {
+          "enum": [
+            "failed",
+            "error"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package"
+        },
+        "policy": {
+          "$ref": "#/$defs/FailurePolicy"
+        },
+        "review_by": {
+          "format": "date-time",
+          "title": "Review By",
+          "type": "string"
+        },
+        "scope": {
+          "title": "Scope",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/FailureSignature"
+        },
+        "step_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step Id"
+        }
+      },
+      "required": [
+        "id",
+        "scope",
+        "baseline_commits",
+        "outcome",
+        "signature",
+        "policy",
+        "owner",
+        "review_by",
+        "evidence"
+      ],
+      "title": "KnownFailure",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "failures": {
+      "items": {
+        "$ref": "#/$defs/KnownFailure"
+      },
+      "title": "Failures",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "failures"
+  ],
+  "title": "KnownFailuresManifest",
+  "type": "object"
+}

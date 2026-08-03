@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "ComparisonStatus": {
+      "enum": [
+        "equal",
+        "expected-change",
+        "different",
+        "invalid",
+        "error"
+      ],
+      "title": "ComparisonStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "actual_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actual Sha256"
+    },
+    "comparator": {
+      "title": "Comparator",
+      "type": "string"
+    },
+    "comparator_version": {
+      "title": "Comparator Version",
+      "type": "string"
+    },
+    "differences": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Differences",
+      "type": "array"
+    },
+    "expected_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Sha256"
+    },
+    "ignored_fields": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ignored Fields",
+      "type": "array"
+    },
+    "kind": {
+      "title": "Kind",
+      "type": "string"
+    },
+    "policy": {
+      "title": "Policy",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "status": {
+      "$ref": "#/$defs/ComparisonStatus"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "tolerances": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Tolerances",
+      "type": "object"
+    }
+  },
+  "required": [
+    "status",
+    "kind",
+    "comparator",
+    "comparator_version",
+    "policy",
+    "summary"
+  ],
+  "title": "ComparisonResult",
+  "type": "object"
+}

@@ -1,0 +1,11 @@
+schema_version: 1
+name: pipeline-smoke
+implemented: false
+owner: dattalab/moseq2-test maintainers
+description: Compact real-data extraction, PCA, model, visualization, and app pipeline regression.
+packages: [moseq2-extract, moseq2-pca, moseq2-model, moseq2-viz, moseq2-app, pybasicbayes, pyhsmm, pyhsmm-autoregressive]
+fixture_sets: [pipeline-smoke-v1]
+stages: [prepare, extract, pca, model, viz, app, compare]
+resources: {cpu: 4, memory_gib: 10, disk_gib: 10, timeout_seconds: 1800}
+steps: []
+
