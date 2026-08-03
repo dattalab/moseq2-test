@@ -1,0 +1,10 @@
+{
+  "bytes": 604993456,
+  "fixture_sets": {
+    "historical-v1": 5,
+    "pipeline-smoke-v1": 20
+  },
+  "objects": 25,
+  "schema_version": 1,
+  "source_checksum_table": "tables/2026-08-02_moseq2_modernization/test_input_sha256.tsv"
+}

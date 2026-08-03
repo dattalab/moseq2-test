@@ -1,0 +1,12 @@
+schema_version: 1
+recipe: pipeline-smoke-reductions-v1
+description: Select four fixed sessions and retain 3,000 PCA-score frames per session.
+input: downstream-source---pca--pca-scores-h5
+sessions:
+  - 2019-03-20_14-29-23_amphetamine_example_11_000060
+  - 2019-03-20_14-37-10_amphetamine_example_7_000062
+  - 2019-03-20_14-52-31_saline_example_22_000060
+  - 2019-03-20_14-57-52_saline_example_18_000062
+frames_per_session: 3000
+output_id: generated--selected-pca-scores-3000-frames
+implementation: moseq2_test.suites.pipeline_smoke:derive_pipeline_inputs

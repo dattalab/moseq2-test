@@ -1,0 +1,11 @@
+schema_version: 1
+recipe: compatible-good-v1
+description: Recreate the timestamp-compatible 900-frame Kinect v2 session used by pipeline-smoke.
+input: selected-recordings--good-session-tar-gz
+operations:
+  - copy the first 900 depth frames without numerical transformation
+  - retain exactly the first 900 depth timestamps
+  - preserve the source metadata and acquisition fields
+output_id: generated--compatible-good-900-frames
+implementation: moseq2_test.suites.pipeline_smoke:derive_compatible_recording
+

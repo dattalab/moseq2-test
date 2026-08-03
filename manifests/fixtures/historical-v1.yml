@@ -1,0 +1,103 @@
+schema_version: 1
+fixture_set: historical-v1
+status: immutable
+created_at: '2026-08-03T00:00:00Z'
+maintainer: dattalab/moseq2-test maintainers
+terms: https://moseq-data.s3.amazonaws.com/moseq2-test/v1/TERMS.md
+objects:
+- id: historical-fixtures--moseq2-app-zip
+  kind: archive
+  filename: moseq2-app.zip
+  size: 22316607
+  sha256: 98f962d8c3846b4e2bb7a447d7cb79bec37823634176206f87b377afabbec460
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/98/98f962d8c3846b4e2bb7a447d7cb79bec37823634176206f87b377afabbec460/moseq2-app.zip
+  provenance_urls:
+  - https://www.dropbox.com/sh/ekxs2vh16dxlr51/AACnFMuGP90zGlgCDeDalf0ra?dl=0
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: zip
+  profiles:
+  - historical-regression
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://www.dropbox.com/sh/ekxs2vh16dxlr51/AACnFMuGP90zGlgCDeDalf0ra?dl=0
+  max_unpacked_bytes: 22312351
+  max_members: 30
+- id: historical-fixtures--moseq2-extract-zip
+  kind: archive
+  filename: moseq2-extract.zip
+  size: 18886753
+  sha256: 21f9dd7a55a44eae329c76ba48686c36cc26dc2da4264d199c7ccd3b7eb370f9
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/21/21f9dd7a55a44eae329c76ba48686c36cc26dc2da4264d199c7ccd3b7eb370f9/moseq2-extract.zip
+  provenance_urls:
+  - https://www.dropbox.com/sh/lwg9l1u80ma3buv/AABQ0gpUA89LakWEjx1kdmWva?dl=0
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: zip
+  profiles:
+  - historical-regression
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://www.dropbox.com/sh/lwg9l1u80ma3buv/AABQ0gpUA89LakWEjx1kdmWva?dl=0
+  max_unpacked_bytes: 18883561
+  max_members: 22
+- id: historical-fixtures--moseq2-model-zip
+  kind: archive
+  filename: moseq2-model.zip
+  size: 4341297
+  sha256: 449076938cb438ce2f81503379c52c19c8c80d01f5e8af4167bc8270dadf0f8a
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/44/449076938cb438ce2f81503379c52c19c8c80d01f5e8af4167bc8270dadf0f8a/moseq2-model.zip
+  provenance_urls:
+  - https://www.dropbox.com/sh/54eut9x98l2kik0/AABZ4OxC2Mr7wNcD9Y7mCQwda?dl=0
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: zip
+  profiles:
+  - historical-regression
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://www.dropbox.com/sh/54eut9x98l2kik0/AABZ4OxC2Mr7wNcD9Y7mCQwda?dl=0
+  max_unpacked_bytes: 4338597
+  max_members: 20
+- id: historical-fixtures--moseq2-pca-zip
+  kind: archive
+  filename: moseq2-pca.zip
+  size: 3607902
+  sha256: d301be92049eac773cae76446ce5b8332f73e68037df2829277c448c20152cce
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/d3/d301be92049eac773cae76446ce5b8332f73e68037df2829277c448c20152cce/moseq2-pca.zip
+  provenance_urls:
+  - https://www.dropbox.com/sh/ki8vu9iwapvsk5a/AADipJ4LpTDRQ76KlcxMbgoAa?dl=0
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: zip
+  profiles:
+  - historical-regression
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://www.dropbox.com/sh/ki8vu9iwapvsk5a/AADipJ4LpTDRQ76KlcxMbgoAa?dl=0
+  max_unpacked_bytes: 3605614
+  max_members: 17
+- id: historical-fixtures--moseq2-viz-zip
+  kind: archive
+  filename: moseq2-viz.zip
+  size: 35160311
+  sha256: de6c4d30a67c800888fc27ec395ff8e3821b2903248235c972a63b0e72b27728
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/de/de6c4d30a67c800888fc27ec395ff8e3821b2903248235c972a63b0e72b27728/moseq2-viz.zip
+  provenance_urls:
+  - https://www.dropbox.com/sh/oxfgp2s7sn3x8ur/AABFcyMi4JO5hvTMVUDYbRuDa?dl=0
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: zip
+  profiles:
+  - historical-regression
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://www.dropbox.com/sh/oxfgp2s7sn3x8ur/AABFcyMi4JO5hvTMVUDYbRuDa?dl=0
+  max_unpacked_bytes: 35157325
+  max_members: 22
+derivations: []

@@ -1,0 +1,347 @@
+schema_version: 1
+fixture_set: pipeline-smoke-v1
+status: immutable
+created_at: '2026-08-03T00:00:00Z'
+maintainer: dattalab/moseq2-test maintainers
+terms: https://moseq-data.s3.amazonaws.com/moseq2-test/v1/TERMS.md
+objects:
+- id: classifiers--flip-classifier-k2-c57-10to13weeks-pkl
+  kind: trusted-pickle
+  filename: flip_classifier_k2_c57_10to13weeks.pkl
+  size: 11981487
+  sha256: 4b06e1e56928bb1ac227329d0932d4637cdd541a3af49865ae127b57991c2c00
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/4b/4b06e1e56928bb1ac227329d0932d4637cdd541a3af49865ae127b57991c2c00/flip_classifier_k2_c57_10to13weeks.pkl
+  provenance_urls:
+  - https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl
+- id: downstream-source---pca--changepoints-h5
+  kind: fixture
+  filename: changepoints.h5
+  size: 6747973
+  sha256: dffc71c5ccee431df4785e47984126fca17f8330d0a4d2ab4a881e4d487a1901
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/df/dffc71c5ccee431df4785e47984126fca17f8330d0a4d2ab4a881e4d487a1901/changepoints.h5
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source---pca--pca-h5
+  kind: fixture
+  filename: pca.h5
+  size: 432456
+  sha256: 845ecef8335e3c9397af90340be3ea07f40fbb82879de00b3c30c2a62b9d2c92
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/84/845ecef8335e3c9397af90340be3ea07f40fbb82879de00b3c30c2a62b9d2c92/pca.h5
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source---pca--pca-scores-h5
+  kind: fixture
+  filename: pca_scores.h5
+  size: 162544715
+  sha256: e48e90e7857b6d6ec74690c7b9a5096486cf677a8a886a3ac76deb5599bd2619
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/e4/e48e90e7857b6d6ec74690c7b9a5096486cf677a8a886a3ac76deb5599bd2619/pca_scores.h5
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source---pca--pca-yaml
+  kind: fixture
+  filename: pca.yaml
+  size: 9015
+  sha256: abec30e6d9063141d530f445a96aae7f6d730d0c088f3f55767371b3ad2c49fc
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/ab/abec30e6d9063141d530f445a96aae7f6d730d0c088f3f55767371b3ad2c49fc/pca.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-29-23-amphetamine-example-11-000060-results-00-h5
+  kind: fixture
+  filename: 2019-03-20_14-29-23_amphetamine_example_11_000060_results_00.h5
+  size: 22148187
+  sha256: c15be2b28dbd3e88391a9520a89a8635a32fc00ed3e7f2ad4ba937bb27fe7928
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/c1/c15be2b28dbd3e88391a9520a89a8635a32fc00ed3e7f2ad4ba937bb27fe7928/2019-03-20_14-29-23_amphetamine_example_11_000060_results_00.h5
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-29-23-amphetamine-example-11-000060-results-00-yaml
+  kind: fixture
+  filename: 2019-03-20_14-29-23_amphetamine_example_11_000060_results_00.yaml
+  size: 4941
+  sha256: 960e6e79593160d34c2d2e7fe19f204dab44cba491269d1f86ce220778d4f451
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/96/960e6e79593160d34c2d2e7fe19f204dab44cba491269d1f86ce220778d4f451/2019-03-20_14-29-23_amphetamine_example_11_000060_results_00.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-37-10-amphetamine-example-7-000062-results-00-h5
+  kind: fixture
+  filename: 2019-03-20_14-37-10_amphetamine_example_7_000062_results_00.h5
+  size: 26063998
+  sha256: e240711a45b6018ecec224e8fbd004b1dca1638fa6db316bb2a8270e3f0d139e
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/e2/e240711a45b6018ecec224e8fbd004b1dca1638fa6db316bb2a8270e3f0d139e/2019-03-20_14-37-10_amphetamine_example_7_000062_results_00.h5
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-37-10-amphetamine-example-7-000062-results-00-yaml
+  kind: fixture
+  filename: 2019-03-20_14-37-10_amphetamine_example_7_000062_results_00.yaml
+  size: 4493
+  sha256: 7957b7a2b726410a137fb18cb9990beaf24f4ba499d35b7baed781fed23fb2d1
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/79/7957b7a2b726410a137fb18cb9990beaf24f4ba499d35b7baed781fed23fb2d1/2019-03-20_14-37-10_amphetamine_example_7_000062_results_00.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-52-31-saline-example-22-000060-results-00-h5
+  kind: fixture
+  filename: 2019-03-20_14-52-31_saline_example_22_000060_results_00.h5
+  size: 21195970
+  sha256: fe9066ec26dcc6ff85c35a9b1363097c0c39d1f7feeda11a6634e48ee240e82e
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/fe/fe9066ec26dcc6ff85c35a9b1363097c0c39d1f7feeda11a6634e48ee240e82e/2019-03-20_14-52-31_saline_example_22_000060_results_00.h5
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-52-31-saline-example-22-000060-results-00-yaml
+  kind: fixture
+  filename: 2019-03-20_14-52-31_saline_example_22_000060_results_00.yaml
+  size: 4936
+  sha256: 998c80dc8c960e8f1752b7db7191de4f58e8cd242eb26edf9f5e9563877d5142
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/99/998c80dc8c960e8f1752b7db7191de4f58e8cd242eb26edf9f5e9563877d5142/2019-03-20_14-52-31_saline_example_22_000060_results_00.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-57-52-saline-example-18-000062-results-00-h5
+  kind: fixture
+  filename: 2019-03-20_14-57-52_saline_example_18_000062_results_00.h5
+  size: 25194099
+  sha256: a118fc44d46486d12167be127cff87621462886cd391a1d72452deb29a73cd8f
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/a1/a118fc44d46486d12167be127cff87621462886cd391a1d72452deb29a73cd8f/2019-03-20_14-57-52_saline_example_18_000062_results_00.h5
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--aggregate-results--2019-03-20-14-57-52-saline-example-18-000062-results-00-yaml
+  kind: fixture
+  filename: 2019-03-20_14-57-52_saline_example_18_000062_results_00.yaml
+  size: 4936
+  sha256: 68b5cdf2eddb4927b0ac4c0804e7aeb2a848bf025b405e214ded511e57a451ee
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/68/68b5cdf2eddb4927b0ac4c0804e7aeb2a848bf025b405e214ded511e57a451ee/2019-03-20_14-57-52_saline_example_18_000062_results_00.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--config-yaml
+  kind: fixture
+  filename: config.yaml
+  size: 2550
+  sha256: 6a89884e36050ff7f9184a660abfeb5693b79f29b042d816855e5b062e1905a9
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/6a/6a89884e36050ff7f9184a660abfeb5693b79f29b042d816855e5b062e1905a9/config.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--models--model-000-1000-p
+  kind: trusted-pickle
+  filename: model-000-1000.p
+  size: 14164195
+  sha256: 6d4bc63f97356d59a655eb1b7ab3d237f856700759c01c988654a586000997dd
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/6d/6d4bc63f97356d59a655eb1b7ab3d237f856700759c01c988654a586000997dd/model-000-1000.p
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--moseq2-index-yaml
+  kind: fixture
+  filename: moseq2-index.yaml
+  size: 30403
+  sha256: b0f95103c80333571e7998e5a8b1449a415e5b0d9c9435f0aefaa711ebef85e0
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/b0/b0f95103c80333571e7998e5a8b1449a415e5b0d9c9435f0aefaa711ebef85e0/moseq2-index.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--progress-yaml
+  kind: fixture
+  filename: progress.yaml
+  size: 659
+  sha256: 83768c2b046a0813f946bc3989c5b587160b0b113520ec71f1a86506638aa471
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/83/83768c2b046a0813f946bc3989c5b587160b0b113520ec71f1a86506638aa471/progress.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: downstream-source--session-config-yaml
+  kind: fixture
+  filename: session_config.yaml
+  size: 83998
+  sha256: e1b6a35c30b4da62f837d294330375b02ed6fed91e470c30b55661cc84ad3365
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/e1/e1b6a35c30b4da62f837d294330375b02ed6fed91e470c30b55661cc84ad3365/session_config.yaml
+  provenance_urls: []
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: Datta Lab MoSeq2 example_data_with_results frozen in Chunk 0
+- id: selected-recordings--bad-session-tar-gz
+  kind: archive
+  filename: bad-session.tar.gz
+  size: 114447732
+  sha256: 02b5ee7b3f69b57d681a7fc4bcc11800e6be1a03162da70c865b537b6bef6a50
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/02/02b5ee7b3f69b57d681a7fc4bcc11800e6be1a03162da70c865b537b6bef6a50/bad-session.tar.gz
+  provenance_urls:
+  - https://storage.googleapis.com/moseq2-examples/bad-session.tar.gz
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: tar.gz
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://storage.googleapis.com/moseq2-examples/bad-session.tar.gz
+  max_unpacked_bytes: 393628881
+  max_members: 13
+- id: selected-recordings--good-session-tar-gz
+  kind: archive
+  filename: good-session.tar.gz
+  size: 115613843
+  sha256: e0747f3369fbb5316ebffa8eb9a2e1760e6f870457f11db1aedbd48d90e2ba98
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/e0/e0747f3369fbb5316ebffa8eb9a2e1760e6f870457f11db1aedbd48d90e2ba98/good-session.tar.gz
+  provenance_urls:
+  - https://storage.googleapis.com/moseq2-examples/good-session.tar.gz
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: tar.gz
+  profiles:
+  - pipeline-smoke
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://storage.googleapis.com/moseq2-examples/good-session.tar.gz
+  max_unpacked_bytes: 393206369
+  max_members: 13
+derivations:
+- id: compatible-good-900-frames
+  inputs:
+  - selected-recordings--good-session-tar-gz
+  recipe: recipes/compatible-good-v1.yml
+  outputs:
+  - generated--compatible-good-900-frames
+- id: selected-pca-scores-3000-frames
+  inputs:
+  - downstream-source---pca--pca-scores-h5
+  recipe: recipes/pipeline-smoke-reductions-v1.yml
+  outputs:
+  - generated--selected-pca-scores-3000-frames
