@@ -5,6 +5,23 @@ created_at: '2026-08-03T00:00:00Z'
 maintainer: dattalab/moseq2-test maintainers
 terms: https://moseq-data.s3.amazonaws.com/moseq2-test/v1/TERMS.md
 objects:
+- id: classifiers--flip-classifier-k2-c57-10to13weeks-pkl
+  kind: trusted-pickle
+  filename: flip_classifier_k2_c57_10to13weeks.pkl
+  size: 11981487
+  sha256: 4b06e1e56928bb1ac227329d0932d4637cdd541a3af49865ae127b57991c2c00
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/4b/4b06e1e56928bb1ac227329d0932d4637cdd541a3af49865ae127b57991c2c00/flip_classifier_k2_c57_10to13weeks.pkl
+  provenance_urls:
+  - https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - historical-regression
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl
 - id: historical-fixtures--moseq2-app-zip
   kind: archive
   filename: moseq2-app.zip

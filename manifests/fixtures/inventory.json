@@ -1,7 +1,7 @@
 {
   "bytes": 604993456,
   "fixture_sets": {
-    "historical-v1": 5,
+    "historical-v1": 6,
     "pipeline-smoke-v1": 20
   },
   "objects": 25,

@@ -14,7 +14,13 @@ from typing import Any
 
 from moseq2_test import WORKER_PROTOCOL_VERSION, __version__
 from moseq2_test.candidates import build_sources, canonical_package, export_source, parse_assignment
-from moseq2_test.data import CacheLayout, extract_object, fetch_selected, verify_selected
+from moseq2_test.data import (
+    CacheLayout,
+    extract_object,
+    fetch_selected,
+    verify_object,
+    verify_selected,
+)
 from moseq2_test.errors import ExitCode, InvalidConfiguration, MissingInput, Moseq2TestError
 from moseq2_test.execution.process import execute_worker
 from moseq2_test.execution.protocol import WorkerRequest
@@ -260,6 +266,17 @@ def _stage_fixture(package: str, destination: Path, cache_dir: Path) -> None:
             shutil.copytree(child, target)
         else:
             shutil.copy2(child, target)
+    if package == "moseq2-extract":
+        classifier = next(
+            value
+            for value in manifest.objects
+            if value.id == "classifiers--flip-classifier-k2-c57-10to13weeks-pkl"
+        )
+        classifier_source = CacheLayout(cache_dir).object_path(classifier.sha256)
+        verify_object(classifier_source, classifier)
+        classifier_target = data / "flip" / classifier.filename
+        classifier_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(classifier_source, classifier_target)
     _make_mutable(data)
 
 
