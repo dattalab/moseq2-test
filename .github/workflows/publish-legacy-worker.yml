@@ -120,13 +120,17 @@ jobs:
           candidate_wheel=$(find "$candidate_output/candidate-build" -maxdepth 1 \
             -type f -name 'moseq2_extract-*.whl' -print -quit)
           test -n "$candidate_wheel"
+          candidate_wheel_directory=$(dirname "$candidate_wheel")
+          candidate_wheel_name=$(basename "$candidate_wheel")
           docker run --rm \
             --entrypoint /bin/bash \
-            --mount "type=bind,source=$candidate_wheel,target=/candidate.whl,readonly" \
+            --env "CANDIDATE_WHEEL_NAME=$candidate_wheel_name" \
+            --mount "type=bind,source=$candidate_wheel_directory,target=/candidate,readonly" \
             "$IMAGE_TAG" \
             -c 'set -euo pipefail
                 /opt/moseq2/legacy/bin/python -m venv --system-site-packages /tmp/compiled-smoke
-                /tmp/compiled-smoke/bin/python -m pip install --no-index --no-deps /candidate.whl
+                /tmp/compiled-smoke/bin/python -m pip install --no-index --no-deps \
+                  "/candidate/$CANDIDATE_WHEEL_NAME"
                 test "$(/tmp/compiled-smoke/bin/python -c \
                   "import moseq2_test_compiled; print(moseq2_test_compiled.answer())")" = 42'
       - name: Generate SPDX JSON software bill of materials

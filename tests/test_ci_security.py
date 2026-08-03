@@ -93,3 +93,13 @@ def test_scheduled_certification_proves_cold_warm_and_offline_behavior() -> None
     assert "--network none" in text
     assert "compare run" in text
     assert "10 * 1024**3" in text
+
+
+def test_worker_publication_preserves_compiled_wheel_filename_for_legacy_pip() -> None:
+    text = (ROOT / ".github/workflows/publish-legacy-worker.yml").read_text(
+        encoding="utf-8"
+    )
+    assert 'candidate_wheel_name=$(basename "$candidate_wheel")' in text
+    assert 'target=/candidate,readonly' in text
+    assert '"/candidate/$CANDIDATE_WHEEL_NAME"' in text
+    assert "/candidate.whl" not in text
