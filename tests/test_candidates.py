@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from moseq2_test.candidates import (
+    _build_distributions,
     build_sources,
     inspect_wheel,
     verify_candidate_set,
@@ -56,6 +57,27 @@ def test_source_candidate_builds_one_noneditable_wheel(tmp_path: Path) -> None:
     assert candidate.dirty is False
     assert Path(candidate.test_source or "").is_dir()
     verify_candidate_set(result, base=tmp_path)
+
+
+def test_explicit_python_uses_native_legacy_build_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    results = _build_distributions(
+        python=Path("/target/bin/python"),
+        source=tmp_path / "source",
+        output=tmp_path / "dist",
+        legacy_setup=True,
+    )
+    assert [result.returncode for result in results] == [0, 0]
+    assert commands[0][1:3] == ["setup.py", "sdist"]
+    assert commands[1][1:6] == ["-m", "pip", "wheel", "--no-deps", "--no-build-isolation"]
 
 
 def test_dirty_source_is_rejected_unless_explicitly_allowed(tmp_path: Path) -> None:

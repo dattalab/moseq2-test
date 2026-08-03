@@ -5,10 +5,11 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tarfile
 import time
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from moseq2_test import WORKER_PROTOCOL_VERSION, __version__
@@ -23,7 +24,7 @@ from moseq2_test.failure_policy import (
     junit_observations,
 )
 from moseq2_test.models import CandidateRecord, CommandResult, RunRecord, SourceRecord, SuiteProfile
-from moseq2_test.provenance import controller_environment, redacted_environment
+from moseq2_test.provenance import controller_environment, redacted_environment, sha256_file
 from moseq2_test.registry import fixture_manifest, known_failures, source_lock, wheel_lock
 from moseq2_test.reporting import write_run_directory
 from moseq2_test.sandbox import Sandbox
@@ -184,6 +185,52 @@ def _make_mutable(root: Path) -> None:
             path.chmod(0o644)
 
 
+def _extract_locked_source_archive(
+    source: SourceRecord,
+    archive_path: Path,
+    expected_sha256: str,
+    destination: Path,
+) -> dict[str, Any]:
+    if not archive_path.is_file() or sha256_file(archive_path) != expected_sha256:
+        raise MissingInput(f"missing or invalid locked source archive: {archive_path}")
+    extraction_root = destination.parent / f".{destination.name}-archive"
+    if extraction_root.exists() or destination.exists():
+        raise InvalidConfiguration(f"source archive destination already exists: {destination}")
+    extraction_root.mkdir()
+    try:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            members = archive.getmembers()
+            if len(members) > 20_000 or sum(item.size for item in members) > 2 * 1024**3:
+                raise InvalidConfiguration(f"source archive exceeds safety ceiling: {archive_path}")
+            for member in members:
+                pure = PurePosixPath(member.name)
+                if (
+                    pure.is_absolute()
+                    or ".." in pure.parts
+                    or not pure.parts
+                    or pure.parts[0] != source.name
+                    or not (member.isfile() or member.isdir())
+                ):
+                    raise InvalidConfiguration(
+                        f"unsupported source archive member {member.name!r}: {archive_path}"
+                    )
+            archive.extractall(extraction_root, members=members, filter="data")
+        extracted = extraction_root / source.name
+        if not extracted.is_dir() or any(path != extracted for path in extraction_root.iterdir()):
+            raise InvalidConfiguration(f"source archive has an unexpected root: {archive_path}")
+        extracted.rename(destination)
+    finally:
+        if extraction_root.exists():
+            shutil.rmtree(extraction_root)
+    return {
+        "commit": source.commit,
+        "tree": source.tree,
+        "dirty": False,
+        "source_archive": archive_path.name,
+        "source_archive_sha256": expected_sha256,
+    }
+
+
 def _runtime_bin(target_python: Path) -> Path | None:
     configuration = target_python.parent.parent / "pyvenv.cfg"
     if not configuration.is_file():
@@ -222,6 +269,7 @@ def _prepare_test_tree(
     *,
     source_override: Path | None,
     source_mirror: Path | None,
+    source_archive: tuple[Path, str] | None,
     sandbox: Sandbox,
     cache_dir: Path,
     offline: bool,
@@ -236,9 +284,15 @@ def _prepare_test_tree(
                 raise MissingInput(f"test source does not exist: {source_override}")
             shutil.copytree(source_override, destination)
             commit, dirty = "snapshot", False
+    elif source_mirror is None and source_archive is not None and source_archive[0].is_file():
+        staged = _extract_locked_source_archive(
+            source, source_archive[0], source_archive[1], destination
+        )
+        commit, dirty = source.commit, False
     else:
         checkout = _locked_checkout(source, mirror=source_mirror, sandbox=sandbox, offline=offline)
         commit, dirty = export_source(checkout, destination, allow_dirty=False)
+        staged = {"commit": commit, "dirty": dirty, "source_checkout": True}
     import_directory = destination / IMPORT_DIRECTORIES[package]
     if import_directory.exists():
         shutil.rmtree(import_directory)
@@ -251,7 +305,9 @@ def _prepare_test_tree(
             encoding="utf-8",
         )
     _stage_fixture(package, destination, cache_dir)
-    return destination, {"commit": commit, "dirty": dirty, "import_root_removed": True}
+    if source_override is not None:
+        staged = {"commit": commit, "dirty": dirty, "source_override": True}
+    return destination, {**staged, "import_root_removed": True}
 
 
 def _install_test_tools(target_python: Path, base_prefix: Path, timeout: int) -> None:
@@ -493,6 +549,7 @@ def run_historical_regression(options: Any, profile: SuiteProfile) -> tuple[Path
         )
         source_mirror_value = os.environ.get("MOSEQ2_TEST_SOURCE_MIRROR")
         source_mirror = Path(source_mirror_value) if source_mirror_value else None
+        wheel_by_name = {item.package: item for item in wheel_manifest.wheels}
         test_overrides = _source_overrides(options.test_sources)
         for candidate in candidate_records:
             if candidate.test_source:
@@ -523,11 +580,16 @@ def run_historical_regression(options: Any, profile: SuiteProfile) -> tuple[Path
         for step in selected_steps:
             package = canonical_package(step.package or "")
             source = source_by_name[package]
+            source_wheel = wheel_by_name[package]
             test_tree, staged = _prepare_test_tree(
                 package,
                 source,
                 source_override=test_overrides.get(package),
                 source_mirror=source_mirror,
+                source_archive=(
+                    roots["source_archive"] / source_wheel.source_archive_filename,
+                    source_wheel.source_archive_sha256,
+                ),
                 sandbox=sandbox,
                 cache_dir=options.cache_dir,
                 offline=options.offline,

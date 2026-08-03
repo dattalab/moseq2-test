@@ -1,0 +1,39 @@
+schema_version: 1
+lock_id: moseq2-legacy-test-tools-py37-v1
+packages:
+- name: coverage
+  version: '5.5'
+  filename: coverage-5.5-cp37-cp37m-manylinux2010_x86_64.whl
+  size: 242230
+  sha256: 53194af30d5bad77fcba80e23a1441c71abfb3e01192034f8246e0d8f99528f3
+  url: https://files.pythonhosted.org/packages/16/e0/fc9f7bd9b84e6b41d0aad1a113e36714aac0c0a9b307aca5f9af443bc50f/coverage-5.5-cp37-cp37m-manylinux2010_x86_64.whl
+- name: more-itertools
+  version: 8.14.0
+  filename: more_itertools-8.14.0-py3-none-any.whl
+  size: 52193
+  sha256: 1bc4f91ee5b1b31ac7ceacc17c09befe6a40a503907baf9c839c229b5095cfd2
+  url: https://files.pythonhosted.org/packages/0b/ff/1ad78678bee731ae5414ea5e97396b3f91de32186028daa614d322ac5a8b/more_itertools-8.14.0-py3-none-any.whl
+- name: pluggy
+  version: 0.13.1
+  filename: pluggy-0.13.1-py2.py3-none-any.whl
+  size: 18077
+  sha256: 966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d
+  url: https://files.pythonhosted.org/packages/a0/28/85c7aa31b80d150b772fbe4a229487bc6644da9ccb7e427dd8cc60cb8a62/pluggy-0.13.1-py2.py3-none-any.whl
+- name: py
+  version: 1.11.0
+  filename: py-1.11.0-py2.py3-none-any.whl
+  size: 98708
+  sha256: 607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378
+  url: https://files.pythonhosted.org/packages/f6/f0/10642828a8dfb741e5f3fbaac830550a518a775c7fff6f04a007259b0548/py-1.11.0-py2.py3-none-any.whl
+- name: pytest
+  version: 5.4.1
+  filename: pytest-5.4.1-py3-none-any.whl
+  size: 246740
+  sha256: 0e5b30f5cb04e887b91b1ee519fa3d89049595f428c1db76e73bd7f17b09b172
+  url: https://files.pythonhosted.org/packages/c7/e2/c19c667f42f72716a7d03e8dd4d6f63f47d39feadd44cc1ee7ca3089862c/pytest-5.4.1-py3-none-any.whl
+- name: pytest-cov
+  version: 2.5.1
+  filename: pytest_cov-2.5.1-py2.py3-none-any.whl
+  size: 21222
+  sha256: 890fe5565400902b0c78b5357004aab1c814115894f4f21370e2433256a3eeec
+  url: https://files.pythonhosted.org/packages/30/7d/7f6a78ae44a1248ee28cc777586c18b28a1df903470e5d34a6e25712b8aa/pytest_cov-2.5.1-py2.py3-none-any.whl

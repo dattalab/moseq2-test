@@ -128,6 +128,62 @@ def inspect_wheel(path: Path, *, expected_package: str | None = None) -> dict[st
     }
 
 
+def _build_distributions(
+    *,
+    python: Path,
+    source: Path,
+    output: Path,
+    legacy_setup: bool,
+) -> list[subprocess.CompletedProcess[str]]:
+    """Build an sdist and wheel without importing the candidate in the controller.
+
+    The historical repositories predate PEP 517 and expose ``setup.py``.  Their
+    Python 3.7 target intentionally does not carry the modern ``build`` package,
+    so an explicitly selected target interpreter uses the two native legacy
+    build commands.  Controller-native builds keep the isolated PEP 517 path.
+    """
+    if legacy_setup:
+        commands = [
+            [str(python), "setup.py", "sdist", "--dist-dir", str(output)],
+            [
+                str(python),
+                "-m",
+                "pip",
+                "wheel",
+                "--no-deps",
+                "--no-build-isolation",
+                "--wheel-dir",
+                str(output),
+                ".",
+            ],
+        ]
+    else:
+        commands = [
+            [
+                str(python),
+                "-m",
+                "build",
+                "--sdist",
+                "--wheel",
+                "--outdir",
+                str(output),
+            ]
+        ]
+    completed: list[subprocess.CompletedProcess[str]] = []
+    for command in commands:
+        result = subprocess.run(
+            command,
+            cwd=source,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        completed.append(result)
+        if result.returncode != 0:
+            break
+    return completed
+
+
 def build_sources(
     assignments: list[str],
     *,
@@ -157,26 +213,23 @@ def build_sources(
             python = build_python or Path(sys.executable)
             if not python.is_file():
                 raise MissingInput(f"candidate build Python does not exist: {python}")
-            completed = subprocess.run(
-                [
-                    str(python),
-                    "-m",
-                    "build",
-                    "--sdist",
-                    "--wheel",
-                    "--outdir",
-                    str(wheel_output),
-                ],
-                cwd=export,
-                check=False,
-                capture_output=True,
-                text=True,
+            completed = _build_distributions(
+                python=python,
+                source=export,
+                output=wheel_output,
+                legacy_setup=build_python is not None and (export / "setup.py").is_file(),
+            )
+            stdout = "\n".join(
+                f"$ {' '.join(result.args)}\n{result.stdout}" for result in completed
+            )
+            stderr = "\n".join(
+                f"$ {' '.join(result.args)}\n{result.stderr}" for result in completed
             )
             (sandbox.result / f"{name}-build.stdout.log").write_text(
-                completed.stdout, encoding="utf-8"
+                stdout, encoding="utf-8"
             )
             (sandbox.result / f"{name}-build.stderr.log").write_text(
-                completed.stderr, encoding="utf-8"
+                stderr, encoding="utf-8"
             )
             shutil.copy2(
                 sandbox.result / f"{name}-build.stdout.log",
@@ -186,7 +239,7 @@ def build_sources(
                 sandbox.result / f"{name}-build.stderr.log",
                 output / "logs" / f"{name}-build.stderr.log",
             )
-            if completed.returncode != 0:
+            if not completed or completed[-1].returncode != 0:
                 raise InvalidConfiguration(
                     f"wheel build failed for {name} with {python}; see sandbox {sandbox.root}"
                 )

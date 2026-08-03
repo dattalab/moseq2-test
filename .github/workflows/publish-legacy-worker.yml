@@ -1,0 +1,156 @@
+name: Publish locked legacy worker
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: publish-legacy-worker
+  cancel-in-progress: false
+
+jobs:
+  build-test-publish:
+    name: Build, certify, scan, and publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: legacy-worker-release
+    env:
+      IMAGE_NAME: ghcr.io/dattalab/moseq2-test-legacy-worker
+      IMAGE_TAG: ghcr.io/dattalab/moseq2-test-legacy-worker:sha-${{ github.sha }}
+    steps:
+      - name: Check out the trusted revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
+      - name: Install the locked context-preparation environment
+        run: uv sync --frozen --no-dev
+      - name: Fetch and verify every image input
+        run: |
+          uv run python environments/prepare_legacy_worker_context.py \
+            --repository "$GITHUB_WORKSPACE" \
+            --output "$GITHUB_WORKSPACE/build/worker-inputs"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Build the linux/amd64 image into the disposable runner
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: environments/legacy-worker.Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.IMAGE_TAG }}
+          build-args: SOURCE_COMMIT=${{ github.sha }}
+          cache-from: type=gha,scope=legacy-worker
+          cache-to: type=gha,mode=max,scope=legacy-worker
+          provenance: false
+      - name: Verify controller/worker boundary and installed baseline
+        run: |
+          docker run --rm "$IMAGE_TAG" --version
+          docker run --rm "$IMAGE_TAG" \
+            --target-python /opt/moseq2/legacy/bin/python doctor --ci
+          docker run --rm "$IMAGE_TAG" \
+            --cache-dir /tmp/cache \
+            --workspace /tmp/workspace \
+            --output-dir /tmp/results \
+            --target-python /opt/moseq2/legacy/bin/python \
+            run install-smoke --keep-sandbox never
+      - name: Generate SPDX JSON software bill of materials
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_TAG }}
+          format: spdx-json
+          output-file: legacy-worker.sbom.spdx.json
+          artifact-name: legacy-worker-sbom.spdx.json
+          upload-artifact: false
+      - name: Scan the deliberate legacy environment and retain all findings
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          sbom: legacy-worker.sbom.spdx.json
+          fail-build: false
+          output-format: json
+          output-file: legacy-worker.grype.json
+      - name: Run the complete image-based baseline certification
+        run: |
+          mkdir -p "$RUNNER_TEMP/moseq2-test-cache" \
+            "$RUNNER_TEMP/moseq2-test-workspace" \
+            "$RUNNER_TEMP/moseq2-test-results"
+          docker run --rm \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-cache,target=/cache" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-workspace,target=/workspace" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-results,target=/results" \
+            "$IMAGE_TAG" \
+            --cache-dir /cache \
+            --workspace /workspace \
+            --output-dir /results \
+            --target-python /opt/moseq2/legacy/bin/python \
+            baseline certify \
+            --fixture-set historical-v1 \
+            --fixture-set pipeline-smoke-v1
+      - name: Authenticate to GHCR only after tests and scan complete
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push immutable commit tag and capture digest
+        id: publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE_TAG"
+          digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_TAG")
+          digest=${digest##*@}
+          case "$digest" in sha256:[0-9a-f][0-9a-f]*) ;; *) echo "invalid digest" >&2; exit 1;; esac
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          IMAGE_DIGEST="$digest" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          value = {
+              "schema_version": 1,
+              "image": os.environ["IMAGE_NAME"],
+              "tag": os.environ["IMAGE_TAG"],
+              "digest": os.environ["IMAGE_DIGEST"],
+              "source_commit": os.environ["GITHUB_SHA"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+          }
+          Path("legacy-worker-publication.json").write_text(
+              json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+      - name: Create GitHub and registry build-provenance attestation
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
+      - name: Retain certification, SBOM, scan, and publication identity
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: legacy-worker-publication-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/moseq2-test-results/
+            legacy-worker.sbom.spdx.json
+            legacy-worker.grype.json
+            legacy-worker-publication.json
+            build/worker-inputs/context-manifest.json
+          if-no-files-found: error
+          retention-days: 30

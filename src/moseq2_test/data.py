@@ -389,7 +389,9 @@ def _object_key(item: FixtureObject) -> str:
 
 
 def _find_source(source_root: Path, item: FixtureObject) -> Path:
-    candidates = [path for path in source_root.rglob(item.filename) if path.is_file()]
+    addressed = source_root / "objects" / "sha256" / item.sha256[:2] / item.sha256
+    candidates = [addressed] if addressed.is_file() else []
+    candidates.extend(path for path in source_root.rglob(item.filename) if path.is_file())
     for candidate in candidates:
         if candidate.stat().st_size == item.size and sha256_file(candidate) == item.sha256:
             return candidate

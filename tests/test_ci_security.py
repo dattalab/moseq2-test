@@ -43,11 +43,22 @@ def test_public_workflows_have_read_only_permissions_and_no_privileged_trigger()
     for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
         text = path.read_text(encoding="utf-8")
         document = yaml.safe_load(text)
-        assert document["permissions"] == {"contents": "read"}
         assert "pull_request_target" not in text
         assert "self-hosted" not in text
-        assert "secrets." not in text
-        assert "packages: write" not in text
+        if path.name == "publish-legacy-worker.yml":
+            assert document["permissions"] == {
+                "contents": "read",
+                "packages": "write",
+                "id-token": "write",
+                "attestations": "write",
+            }
+            assert "  pull_request:" not in text
+            assert "environment: legacy-worker-release" in text
+            assert set(re.findall(r"secrets\.([A-Z0-9_]+)", text)) == {"GITHUB_TOKEN"}
+        else:
+            assert document["permissions"] == {"contents": "read"}
+            assert "secrets." not in text
+            assert "packages: write" not in text
 
 
 def test_composite_action_has_the_approved_thin_caller_contract() -> None:

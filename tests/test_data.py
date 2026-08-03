@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from moseq2_test.data import CacheLayout, extract_object, fetch_object, verify_object
+from moseq2_test.data import CacheLayout, _find_source, extract_object, fetch_object, verify_object
 from moseq2_test.errors import InvalidConfiguration, MissingInput
 from moseq2_test.models import FixtureObject
 
@@ -47,6 +47,18 @@ def test_offline_mirror_populates_content_addressed_cache(tmp_path: Path) -> Non
     assert result == layout.object_path(item.sha256)
     assert result.read_bytes() == b"verified bytes"
     assert result.stat().st_mode & 0o222 == 0
+
+
+def test_publication_finds_content_addressed_cache_object(tmp_path: Path) -> None:
+    original = tmp_path / "original.bin"
+    original.write_bytes(b"publish me")
+    item = fixture(original)
+    addressed = tmp_path / "objects" / "sha256" / item.sha256[:2] / item.sha256
+    addressed.parent.mkdir(parents=True)
+    addressed.write_bytes(original.read_bytes())
+    original.unlink()
+
+    assert _find_source(tmp_path, item) == addressed
 
 
 def test_corrupt_cache_is_rejected_offline(tmp_path: Path) -> None:

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import io
+import tarfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -8,6 +11,7 @@ from moseq2_test.models import SourceRecord
 from moseq2_test.registry import profile
 from moseq2_test.sandbox import Sandbox
 from moseq2_test.suites.historical_regression import (
+    _extract_locked_source_archive,
     _parse_junit,
     _prepare_test_tree,
     _test_command,
@@ -76,6 +80,7 @@ def test_test_snapshot_cannot_import_the_source_package(tmp_path: Path) -> None:
         record,
         source_override=source,
         source_mirror=None,
+        source_archive=None,
         sandbox=sandbox,
         cache_dir=tmp_path / "cache",
         offline=True,
@@ -84,6 +89,39 @@ def test_test_snapshot_cannot_import_the_source_package(tmp_path: Path) -> None:
     assert not (destination / "pybasicbayes").exists()
     assert (destination / "tests" / "test_public.py").is_file()
     assert evidence["import_root_removed"] is True
+
+
+def test_locked_source_archive_is_hash_verified_and_safely_staged(tmp_path: Path) -> None:
+    archive_path = tmp_path / "pybasicbayes.tar.gz"
+    payload = b"def test_public(): pass\n"
+    with tarfile.open(archive_path, "w:gz") as archive:
+        directory = tarfile.TarInfo("pybasicbayes")
+        directory.type = tarfile.DIRTYPE
+        archive.addfile(directory)
+        tests = tarfile.TarInfo("pybasicbayes/tests")
+        tests.type = tarfile.DIRTYPE
+        archive.addfile(tests)
+        member = tarfile.TarInfo("pybasicbayes/tests/test_public.py")
+        member.size = len(payload)
+        archive.addfile(member, io.BytesIO(payload))
+    record = SourceRecord(
+        name="pybasicbayes",
+        repository="https://github.com/mattjj/pybasicbayes.git",
+        commit="a" * 40,
+        tree="b" * 40,
+        default_branch="master",
+        owner="mattjj",
+        license_id="MIT",
+    )
+    digest = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+    destination = tmp_path / "sources" / "pybasicbayes"
+    destination.parent.mkdir()
+
+    evidence = _extract_locked_source_archive(record, archive_path, digest, destination)
+
+    assert (destination / "tests" / "test_public.py").read_bytes() == payload
+    assert evidence["commit"] == record.commit
+    assert evidence["source_archive_sha256"] == digest
 
 
 def test_profile_command_becomes_an_explicit_target_command(tmp_path: Path) -> None:
