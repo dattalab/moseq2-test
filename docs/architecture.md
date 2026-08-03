@@ -33,6 +33,13 @@ exported from Git, built in clean directories, installed as wheels, and paired
 with an isolated test snapshot. Editable links, escaped `.pth` entries, source
 imports, dirty source, hash mismatches, and duplicate candidates fail closed.
 
+The historical `pyhsmm` and `pyhsmm-autoregressive` setup scripts otherwise
+download Eigen during a build. For those two candidates only, the controller
+verifies the independently locked Eigen 3.3.7 archive and safely stages its
+headers into the disposable Git export before invoking the package's unchanged
+build. The source checkout stays read-only, network access stays disabled, and
+the external input identity is retained in the candidate build log.
+
 ## Data and sandboxes
 
 The fixture cache is content addressed by SHA-256. Downloads are locked and

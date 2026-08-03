@@ -11,3 +11,6 @@
 - Compare cold and offline-warm run semantics after removing only disposable
   sandbox paths, container hostnames, execution timings, and raw hashes whose
   artifact comparators have already evaluated their semantic content.
+- Build `pyhsmm` and `pyhsmm-autoregressive` candidates offline by staging the
+  exact hash-locked Eigen 3.3.7 headers into the disposable source export; the
+  package checkout remains read-only and build logs retain the input identity.

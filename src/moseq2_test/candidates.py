@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
 import tarfile
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import yaml
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from pydantic import ValidationError
 
+from moseq2_test.config import load_yaml, resource
 from moseq2_test.errors import InvalidConfiguration, MissingInput
 from moseq2_test.models import CandidateKind, CandidateRecord, CandidateSet
 from moseq2_test.provenance import sha256_file
@@ -34,6 +36,9 @@ TARGET_PACKAGES = {
     "pyhsmm",
     "pyhsmm-autoregressive",
 }
+EIGEN_PACKAGES = {"pyhsmm", "pyhsmm-autoregressive"}
+EIGEN_MAX_MEMBERS = 5_000
+EIGEN_MAX_UNPACKED_BYTES = 100 * 1024 * 1024
 
 
 def canonical_package(name: str) -> str:
@@ -92,6 +97,109 @@ def export_source(source: Path, destination: Path, *, allow_dirty: bool) -> tupl
         with tarfile.open(fileobj=io.BytesIO(completed.stdout), mode="r:") as archive:
             archive.extractall(destination, filter="data")
     return commit, dirty
+
+
+def _locked_eigen_record() -> dict[str, object]:
+    with resource("environments", "external-sources.lock.yml") as lock_path:
+        records = load_yaml(lock_path).get("sources", [])
+    matches = [
+        item for item in records if isinstance(item, dict) and item.get("id") == "eigen-3.3.7"
+    ]
+    if len(matches) != 1:
+        raise InvalidConfiguration("external source lock must contain exactly one Eigen 3.3.7")
+    record = matches[0]
+    if not (
+        isinstance(record.get("filename"), str)
+        and isinstance(record.get("size"), int)
+        and isinstance(record.get("sha256"), str)
+    ):
+        raise InvalidConfiguration("Eigen 3.3.7 external source lock is malformed")
+    return record
+
+
+def _stage_locked_eigen(package: str, export: Path) -> dict[str, object] | None:
+    """Stage the exact locked Eigen headers required by two historical builds."""
+    if package not in EIGEN_PACKAGES:
+        return None
+    dependency_root = export / "deps"
+    destination = dependency_root / "Eigen"
+    if dependency_root.is_symlink() or destination.is_symlink():
+        raise InvalidConfiguration("candidate Eigen path may not be a symbolic link")
+    if destination.exists():
+        if not destination.is_dir() or any(path.is_symlink() for path in destination.rglob("*")):
+            raise InvalidConfiguration("candidate Eigen input must be a regular directory tree")
+        return {"source": "candidate", "destination": "deps/Eigen"}
+
+    record = _locked_eigen_record()
+    mirror_value = os.environ.get("MOSEQ2_TEST_EXTERNAL_SOURCE_MIRROR")
+    if not mirror_value:
+        raise MissingInput("MOSEQ2_TEST_EXTERNAL_SOURCE_MIRROR is required to stage Eigen")
+    archive_path = Path(mirror_value).expanduser().resolve() / str(record["filename"])
+    if not archive_path.is_file():
+        raise MissingInput(f"locked Eigen archive is missing: {archive_path}")
+    actual_size = archive_path.stat().st_size
+    if actual_size != record["size"]:
+        raise MissingInput(
+            f"locked Eigen archive has size {actual_size}; expected {record['size']}"
+        )
+    actual_hash = sha256_file(archive_path)
+    if actual_hash != record["sha256"]:
+        raise MissingInput(
+            f"locked Eigen archive has SHA-256 {actual_hash}; expected {record['sha256']}"
+        )
+
+    destination.mkdir(parents=True)
+    try:
+        destination.resolve().relative_to(export.resolve())
+    except ValueError as error:
+        raise InvalidConfiguration("Eigen destination escapes the source export") from error
+    with tarfile.open(archive_path, "r:*") as archive:
+        members = archive.getmembers()
+        if len(members) > EIGEN_MAX_MEMBERS:
+            raise InvalidConfiguration("locked Eigen archive exceeds its member ceiling")
+        if sum(member.size for member in members) > EIGEN_MAX_UNPACKED_BYTES:
+            raise InvalidConfiguration("locked Eigen archive exceeds its size ceiling")
+        copied = 0
+        for member in members:
+            relative = PurePosixPath(member.name)
+            if relative.is_absolute() or ".." in relative.parts:
+                raise InvalidConfiguration(f"unsafe Eigen archive member: {member.name!r}")
+            if not (member.isdir() or member.isfile()):
+                raise InvalidConfiguration(
+                    f"unsupported Eigen archive member type: {member.name}"
+                )
+            if relative.parts[:2] != ("eigen-3.3.7", "Eigen"):
+                continue
+            eigen_relative = relative.parts[2:]
+            if not eigen_relative:
+                continue
+            target = destination.joinpath(*eigen_relative)
+            try:
+                target.resolve().relative_to(destination.resolve())
+            except ValueError as error:
+                raise InvalidConfiguration(
+                    f"Eigen archive member escapes destination: {member.name}"
+                ) from error
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            source = archive.extractfile(member)
+            if source is None:
+                raise InvalidConfiguration(f"cannot read Eigen archive member {member.name}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with source, target.open("xb") as output:
+                shutil.copyfileobj(source, output)
+            copied += 1
+    if copied == 0 or not (destination / "Core").is_file():
+        raise InvalidConfiguration("locked Eigen archive did not provide the required headers")
+    return {
+        "source": "locked-external-source",
+        "id": "eigen-3.3.7",
+        "filename": record["filename"],
+        "size": record["size"],
+        "sha256": record["sha256"],
+        "destination": "deps/Eigen",
+    }
 
 
 def inspect_wheel(path: Path, *, expected_package: str | None = None) -> dict[str, object]:
@@ -208,6 +316,7 @@ def build_sources(
         for name, source in parsed:
             export = sandbox.sources / name
             commit, dirty = export_source(source, export, allow_dirty=allow_dirty)
+            external_build_input = _stage_locked_eigen(name, export)
             wheel_output = sandbox.wheelhouse / name
             wheel_output.mkdir()
             python = build_python or Path(sys.executable)
@@ -222,6 +331,13 @@ def build_sources(
             stdout = "\n".join(
                 f"$ {' '.join(result.args)}\n{result.stdout}" for result in completed
             )
+            if external_build_input is not None:
+                stdout = (
+                    "$ moseq2-test stage locked external build input\n"
+                    + json.dumps(external_build_input, sort_keys=True)
+                    + "\n"
+                    + stdout
+                )
             stderr = "\n".join(
                 f"$ {' '.join(result.args)}\n{result.stderr}" for result in completed
             )
