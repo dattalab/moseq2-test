@@ -115,6 +115,7 @@ jobs:
         run: |
           set -euo pipefail
           docker push "$IMAGE_TAG"
+          docker pull "$IMAGE_TAG"
           digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_TAG")
           digest=${digest##*@}
           case "$digest" in sha256:[0-9a-f][0-9a-f]*) ;; *) echo "invalid digest" >&2; exit 1;; esac

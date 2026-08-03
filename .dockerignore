@@ -4,7 +4,9 @@
 .mypy_cache
 .pytest_cache
 .ruff_cache
-build
+build/*
+!build/worker-inputs
+!build/worker-inputs/**
 dist
 runs
 __pycache__

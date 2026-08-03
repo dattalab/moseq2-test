@@ -106,6 +106,15 @@ def test_entrypoint_builds_and_installs_the_pinned_action_checkout_offline() -> 
     assert "MOSEQ2_TEST_ACTION_ROOT" in entrypoint
 
 
+def test_docker_context_includes_only_the_generated_worker_inputs_under_build() -> None:
+    patterns = (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    assert "build" not in patterns
+    assert "build/" not in patterns
+    assert "build/*" in patterns
+    assert "!build/worker-inputs" in patterns
+    assert "!build/worker-inputs/**" in patterns
+
+
 def test_test_tool_wheels_match_the_locked_chunk0_files() -> None:
     records = load("legacy-test-tools.lock.yml")["packages"]
     assert isinstance(records, list) and len(records) == 6
