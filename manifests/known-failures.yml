@@ -134,7 +134,7 @@ failures:
     baseline_commits: {moseq2-pca: a7bdbe179084c5d366290cd04f4ab26ee8387aa0}
     outcome: failed
     signature:
-      exception: ValueError
+      exception: NotImplementedError
       message_regex: "Specified cluster not supported"
     policy: required_failure
     owner: dattalab

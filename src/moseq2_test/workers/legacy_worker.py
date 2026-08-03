@@ -184,16 +184,31 @@ def operation_seeded_cli(parameters):
     import numpy as np
 
     np.random.seed(int(parameters.get("seed", 0)))
+    if parameters.get("cwd") is not None:
+        os.chdir(parameters["cwd"])
     module = importlib.import_module(parameters["module"])
     arguments = list(parameters.get("arguments", []))
     sys.argv = [parameters["module"], *arguments]
     try:
         value = module.cli()
+        return {"returncode": int(value or 0), "module": parameters["module"]}
     except SystemExit as error:
-        value = error.code
-        if value not in (None, 0):
-            raise
-    return {"returncode": int(value or 0), "module": parameters["module"]}
+        value = int(error.code or 0)
+        return {
+            "returncode": value,
+            "module": parameters["module"],
+            "exception": "SystemExit" if value else None,
+            "message": str(error),
+            "traceback": traceback.format_exc() if value else None,
+        }
+    except BaseException as error:
+        return {
+            "returncode": 1,
+            "module": parameters["module"],
+            "exception": type(error).__name__,
+            "message": str(error),
+            "traceback": traceback.format_exc(),
+        }
 
 
 def operation_inspect_installation(parameters):

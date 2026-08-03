@@ -45,3 +45,35 @@ def test_worker_has_python37_compatible_syntax() -> None:
         pytest.skip("sealed Python 3.7 interpreter is unavailable")
     worker = Path(__file__).parents[1] / "src/moseq2_test/workers/legacy_worker.py"
     subprocess.run([str(legacy_python), "-m", "py_compile", str(worker)], check=True)
+
+
+def test_seeded_cli_returns_structured_failure_and_uses_requested_cwd(tmp_path: Path) -> None:
+    module_root = tmp_path / "modules"
+    module_root.mkdir()
+    (module_root / "failing_cli.py").write_text(
+        "import os\ndef cli():\n    raise ValueError('worker cwd: ' + os.getcwd())\n",
+        encoding="utf-8",
+    )
+    run_root = tmp_path / "run"
+    run_root.mkdir()
+    request = WorkerRequest(
+        request_id="structured-failure",
+        operation="seeded-cli",
+        parameters={
+            "module": "failing_cli",
+            "arguments": [],
+            "seed": 7,
+            "cwd": str(run_root),
+        },
+    )
+    response = execute_worker(
+        Path(sys.executable),
+        request,
+        work=tmp_path / "worker",
+        timeout=30,
+        environment={"PYTHONPATH": str(module_root)},
+    )
+    assert response.result is not None
+    assert response.result["returncode"] == 1
+    assert response.result["exception"] == "ValueError"
+    assert response.result["message"] == f"worker cwd: {run_root}"

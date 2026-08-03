@@ -5,4 +5,3 @@ rtol: 0
 atol: 0
 ignore:
   - /(?:created_at|timestamp|path|output_dir)$
-

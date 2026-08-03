@@ -3,9 +3,162 @@ name: pipeline-smoke
 implemented: false
 owner: dattalab/moseq2-test maintainers
 description: Compact real-data extraction, PCA, model, visualization, and app pipeline regression.
-packages: [moseq2-extract, moseq2-pca, moseq2-model, moseq2-viz, moseq2-app, pybasicbayes, pyhsmm, pyhsmm-autoregressive]
+packages:
+  - moseq2-extract
+  - moseq2-pca
+  - moseq2-model
+  - moseq2-viz
+  - moseq2-app
+  - pybasicbayes
+  - pyhsmm
+  - pyhsmm-autoregressive
 fixture_sets: [pipeline-smoke-v1]
 stages: [prepare, extract, pca, model, viz, app, compare]
-resources: {cpu: 4, memory_gib: 10, disk_gib: 10, timeout_seconds: 1800}
-steps: []
-
+resources:
+  cpu: 4
+  memory_gib: 10
+  disk_gib: 10
+  timeout_seconds: 1800
+steps:
+  - id: prepare-compact-real-data-project
+    stage: prepare
+    operation: derive-versioned-inputs
+    fixtures:
+      - selected-recordings--good-session-tar-gz
+      - selected-recordings--bad-session-tar-gz
+      - classifiers--flip-classifier-k2-c57-10to13weeks-pkl
+      - downstream-source---pca--pca-scores-h5
+    outputs: [input-project]
+  - id: run-1-pristine-good-session-timestamp-qc
+    stage: extract
+    operation: seeded-cli
+    depends_on: [prepare-compact-real-data-project]
+    expected_failure: pipeline-pristine-good-timestamp-mismatch
+  - id: run-1-pristine-bad-session-timestamp-qc
+    stage: extract
+    operation: seeded-cli
+    depends_on: [run-1-pristine-good-session-timestamp-qc]
+    expected_failure: pipeline-pristine-bad-timestamp-mismatch
+  - id: run-1-compatible-good-find-roi
+    stage: extract
+    operation: seeded-cli
+    depends_on: [run-1-pristine-bad-session-timestamp-qc]
+  - id: run-1-compatible-good-extract
+    stage: extract
+    operation: seeded-cli
+    depends_on: [run-1-compatible-good-find-roi]
+    outputs: [run-1-extraction]
+  - id: run-1-pca-apply
+    stage: pca
+    operation: cli
+    depends_on: [run-1-compatible-good-extract]
+    outputs: [run-1-pca-scores]
+  - id: run-1-changepoints-nodask-advertised-failure
+    stage: pca
+    operation: seeded-cli
+    depends_on: [run-1-pca-apply]
+    expected_failure: pipeline-changepoints-nodask-not-implemented
+  - id: run-1-changepoints-local
+    stage: pca
+    operation: seeded-cli
+    depends_on: [run-1-changepoints-nodask-advertised-failure]
+    outputs: [run-1-changepoints]
+  - id: run-1-legacy-saved-model-apply
+    stage: model
+    operation: cli
+    depends_on: [run-1-changepoints-local]
+    expected_failure: pipeline-legacy-model-lacks-whitening
+  - id: run-1-model-train-smoke
+    stage: model
+    operation: seeded-cli
+    depends_on: [run-1-legacy-saved-model-apply]
+    outputs: [run-1-trained-model]
+  - id: run-1-reference-model-apply
+    stage: model
+    operation: cli
+    depends_on: [run-1-model-train-smoke]
+    outputs: [run-1-reference-model-application]
+  - id: run-1-viz-make-dataframe
+    stage: viz
+    operation: cli
+    depends_on: [run-1-reference-model-apply]
+    outputs: [run-1-viz-dataframe]
+  - id: run-1-viz-transition-graph
+    stage: viz
+    operation: cli
+    depends_on: [run-1-viz-make-dataframe]
+    outputs: [run-1-transition-graph]
+  - id: run-1-viz-crowd-movie
+    stage: viz
+    operation: cli
+    depends_on: [run-1-viz-transition-graph]
+    outputs: [run-1-crowd-movie]
+  - id: run-1-app-noninteractive-smoke
+    stage: app
+    operation: worker-app-smoke
+    depends_on: [run-1-viz-crowd-movie]
+    outputs: [run-1-app-smoke]
+  - id: run-2-pristine-good-session-timestamp-qc
+    stage: extract
+    operation: seeded-cli
+    depends_on: [run-1-app-noninteractive-smoke]
+    expected_failure: pipeline-pristine-good-timestamp-mismatch
+  - id: run-2-pristine-bad-session-timestamp-qc
+    stage: extract
+    operation: seeded-cli
+    depends_on: [run-2-pristine-good-session-timestamp-qc]
+    expected_failure: pipeline-pristine-bad-timestamp-mismatch
+  - id: run-2-compatible-good-find-roi
+    stage: extract
+    operation: seeded-cli
+    depends_on: [run-2-pristine-bad-session-timestamp-qc]
+  - id: run-2-compatible-good-extract
+    stage: extract
+    operation: seeded-cli
+    depends_on: [run-2-compatible-good-find-roi]
+    outputs: [run-2-extraction]
+  - id: run-2-pca-apply
+    stage: pca
+    operation: cli
+    depends_on: [run-2-compatible-good-extract]
+    outputs: [run-2-pca-scores]
+  - id: run-2-changepoints-local
+    stage: pca
+    operation: seeded-cli
+    depends_on: [run-2-pca-apply]
+    outputs: [run-2-changepoints]
+  - id: run-2-legacy-saved-model-apply
+    stage: model
+    operation: cli
+    depends_on: [run-2-changepoints-local]
+    expected_failure: pipeline-legacy-model-lacks-whitening
+  - id: run-2-model-train-smoke
+    stage: model
+    operation: seeded-cli
+    depends_on: [run-2-legacy-saved-model-apply]
+    outputs: [run-2-trained-model]
+  - id: run-2-reference-model-apply
+    stage: model
+    operation: cli
+    depends_on: [run-2-model-train-smoke]
+    outputs: [run-2-reference-model-application]
+  - id: run-2-viz-make-dataframe
+    stage: viz
+    operation: cli
+    depends_on: [run-2-reference-model-apply]
+    outputs: [run-2-viz-dataframe]
+  - id: run-2-viz-transition-graph
+    stage: viz
+    operation: cli
+    depends_on: [run-2-viz-make-dataframe]
+    outputs: [run-2-transition-graph]
+  - id: run-2-viz-crowd-movie
+    stage: viz
+    operation: cli
+    depends_on: [run-2-viz-transition-graph]
+    outputs: [run-2-crowd-movie]
+  - id: run-2-app-noninteractive-smoke
+    stage: app
+    operation: worker-app-smoke
+    depends_on: [run-2-viz-crowd-movie]
+    outputs: [run-2-app-smoke]

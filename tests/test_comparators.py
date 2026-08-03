@@ -45,6 +45,39 @@ def test_hdf5_integer_change_is_always_different(tmp_path: Path) -> None:
     assert compare("extraction-h5", expected, actual, "extraction-v1").status == "different"
 
 
+def test_hdf5_string_change_is_structured_instead_of_erroring(tmp_path: Path) -> None:
+    expected = tmp_path / "expected.h5"
+    actual = tmp_path / "actual.h5"
+    write_hdf5(expected, np.array([b"left", b"stable"]))
+    write_hdf5(actual, np.array([b"right", b"stable"]))
+    result = compare("extraction-h5", expected, actual, "extraction-v1")
+    assert result.status == "different"
+    assert result.differences[0]["kind"] == "values"
+    assert result.differences[0]["maximum_absolute_difference"] is None
+
+
+def test_extraction_generated_uuid_is_explicitly_ignored(tmp_path: Path) -> None:
+    expected = tmp_path / "expected.h5"
+    actual = tmp_path / "actual.h5"
+    for path, uuid in ((expected, b"first"), (actual, b"second")):
+        with h5py.File(path, "w") as handle:
+            metadata = handle.create_group("metadata")
+            metadata.create_dataset("uuid", data=uuid)
+            handle.create_dataset("values", data=np.array([1, 2], dtype=np.int32))
+    assert compare("extraction-h5", expected, actual, "extraction-v1").status == "equal"
+
+
+def test_extraction_classifier_location_is_ignored_but_identity_is_external(tmp_path: Path) -> None:
+    expected = tmp_path / "expected.h5"
+    actual = tmp_path / "actual.h5"
+    for path, location in ((expected, b"/old/classifier.pkl"), (actual, b"/new/classifier.pkl")):
+        with h5py.File(path, "w") as handle:
+            parameters = handle.create_group("metadata/extraction/parameters")
+            parameters.create_dataset("flip_classifier", data=location)
+            handle.create_dataset("values", data=np.array([1, 2], dtype=np.int32))
+    assert compare("extraction-h5", expected, actual, "extraction-v1").status == "equal"
+
+
 def test_yaml_ignored_path_and_real_change(tmp_path: Path) -> None:
     expected = tmp_path / "expected.yml"
     actual = tmp_path / "actual.yml"
@@ -52,6 +85,15 @@ def test_yaml_ignored_path_and_real_change(tmp_path: Path) -> None:
     actual.write_text("value: 1\noutput_dir: /second\n")
     assert compare("yaml", expected, actual, "yaml-v1").status == "equal"
     actual.write_text("value: 2\noutput_dir: /second\n")
+    assert compare("yaml", expected, actual, "yaml-v1").status == "different"
+
+
+def test_yaml_generated_top_level_uuid_is_explicitly_ignored(tmp_path: Path) -> None:
+    expected = tmp_path / "expected.yml"
+    actual = tmp_path / "actual.yml"
+    expected.write_text("uuid: first\nvalue: 1\n")
+    actual.write_text("uuid: second\nvalue: 1\n")
+    assert compare("yaml", expected, actual, "extraction-yaml-v1").status == "equal"
     assert compare("yaml", expected, actual, "yaml-v1").status == "different"
 
 

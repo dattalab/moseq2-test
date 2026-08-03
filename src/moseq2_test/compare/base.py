@@ -124,12 +124,11 @@ def arrays_differences(
     else:
         close = np.asarray(expected == actual)
     if not bool(np.all(close)):
-        finite = np.isfinite(expected) & np.isfinite(actual)
-        maximum = (
-            float(np.max(np.abs(expected[finite] - actual[finite])))
-            if np.any(finite) and np.issubdtype(expected.dtype, np.number)
-            else None
-        )
+        maximum = None
+        if np.issubdtype(expected.dtype, np.number):
+            finite = np.isfinite(expected) & np.isfinite(actual)
+            if np.any(finite):
+                maximum = float(np.max(np.abs(expected[finite] - actual[finite])))
         differences.append(
             {
                 "kind": "values",

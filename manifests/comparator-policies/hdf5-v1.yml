@@ -1,0 +1,9 @@
+schema_version: 1
+name: hdf5-v1
+kind: hdf5
+rtol: 1.0e-7
+atol: 1.0e-8
+compare_attributes: true
+require_dtype: true
+ignore:
+  - /(?:created_at|timestamp|path|output_dir)$

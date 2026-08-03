@@ -103,11 +103,15 @@ def verify_object(path: Path, item: FixtureObject) -> None:
 
 
 def _mirror_candidates(mirror: Path, item: FixtureObject) -> list[Path]:
-    return [
+    direct = [
         mirror / "objects" / "sha256" / item.sha256[:2] / item.sha256,
         mirror / item.sha256,
         mirror / item.filename,
     ]
+    recursive = sorted(
+        path for path in mirror.rglob(item.filename) if path.is_file() and path not in direct
+    )
+    return [*direct, *recursive]
 
 
 def _copy_verified(source: Path, temporary: Path, item: FixtureObject) -> None:

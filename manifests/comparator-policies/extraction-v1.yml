@@ -6,6 +6,7 @@ atol: 1.0e-8
 compare_attributes: true
 require_dtype: true
 ignore:
+  - ^/metadata/uuid$
+  - ^/metadata/extraction/parameters/flip_classifier$
   - /metadata/extraction/@attributes/(created_at|command|source_path)$
   - /metadata/(path|session_path)$
-
