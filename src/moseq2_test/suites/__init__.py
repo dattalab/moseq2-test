@@ -47,6 +47,11 @@ def run_profile(options: RunOptions) -> SuiteRun:
     selected = profile(options.profile, require_implemented=False)
     if not selected.implemented:
         raise ProfileUnavailable(f"profile {selected.name!r} is defined but unavailable")
+    if selected.name == "install-smoke":
+        from moseq2_test.suites.install_smoke import run_install_smoke
+
+        run_directory, exit_code = run_install_smoke(options, selected)
+        return SuiteRun(run_directory=run_directory, exit_code=exit_code)
     raise ProfileUnavailable(f"profile {selected.name!r} has no installed runner yet")
 
 

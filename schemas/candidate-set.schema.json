@@ -27,6 +27,31 @@
           "title": "Package",
           "type": "string"
         },
+        "sdist_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sdist Location"
+        },
+        "sdist_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sdist Sha256"
+        },
         "sha256": {
           "anyOf": [
             {

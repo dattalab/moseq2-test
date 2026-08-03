@@ -1,11 +1,168 @@
 schema_version: 1
 name: install-smoke
-implemented: false
+implemented: true
 owner: dattalab/moseq2-test maintainers
-description: Build, install, import, entry-point, and compiled-operation checks for eight locked packages.
-packages: [moseq2-extract, moseq2-pca, moseq2-model, moseq2-viz, moseq2-app, pybasicbayes, pyhsmm, pyhsmm-autoregressive]
+description: Build, install, import, entry-point, and compiled-operation checks for
+  eight locked packages.
+packages:
+- moseq2-extract
+- moseq2-pca
+- moseq2-model
+- moseq2-viz
+- moseq2-app
+- pybasicbayes
+- pyhsmm
+- pyhsmm-autoregressive
 fixture_sets: []
-stages: [build, install, inspect, smoke]
-resources: {cpu: 2, memory_gib: 4, disk_gib: 3, timeout_seconds: 1800}
-steps: []
-
+stages:
+- build
+- install
+- inspect
+- smoke
+resources:
+  cpu: 2
+  memory_gib: 4
+  disk_gib: 3
+  timeout_seconds: 1800
+steps:
+- id: python-version
+  stage: install
+  operation: validate-lock
+- id: python-prefix
+  stage: install
+  operation: validate-lock
+- id: no-editable-links
+  stage: install
+  operation: validate-lock
+- id: no-escaped-pth
+  stage: install
+  operation: validate-lock
+- id: build-provenance-manifest
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-pybasicbayes
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-pyhsmm
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-pyhsmm-autoregressive
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-moseq2-extract
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-moseq2-pca
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-moseq2-model
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-moseq2-viz
+  stage: build
+  operation: validate-lock
+- id: build-artifacts-moseq2-app
+  stage: build
+  operation: validate-lock
+- id: external-build-source-eigen
+  stage: build
+  operation: validate-lock
+- id: import-moseq2_extract
+  stage: inspect
+  operation: inspect-import
+- id: import-moseq2_pca
+  stage: inspect
+  operation: inspect-import
+- id: import-moseq2_model
+  stage: inspect
+  operation: inspect-import
+- id: import-moseq2_viz
+  stage: inspect
+  operation: inspect-import
+- id: import-moseq2_app
+  stage: inspect
+  operation: inspect-import
+- id: import-pybasicbayes
+  stage: inspect
+  operation: inspect-import
+- id: import-pyhsmm
+  stage: inspect
+  operation: inspect-import
+- id: import-autoregressive
+  stage: inspect
+  operation: inspect-import
+- id: distribution-moseq2-extract
+  stage: inspect
+  operation: inspect-distribution
+- id: distribution-moseq2-pca
+  stage: inspect
+  operation: inspect-distribution
+- id: distribution-moseq2-model
+  stage: inspect
+  operation: inspect-distribution
+- id: distribution-moseq2-viz
+  stage: inspect
+  operation: inspect-distribution
+- id: distribution-moseq2-app
+  stage: inspect
+  operation: inspect-distribution
+- id: distribution-pybasicbayes
+  stage: inspect
+  operation: inspect-distribution
+- id: distribution-pyhsmm
+  stage: inspect
+  operation: inspect-distribution
+- id: distribution-autoregressive
+  stage: inspect
+  operation: inspect-distribution
+- id: extension-pybasicbayes.util.cstats
+  stage: inspect
+  operation: inspect-extension
+- id: extension-pyhsmm.internals.hmm_messages_interface
+  stage: inspect
+  operation: inspect-extension
+- id: extension-pyhsmm.internals.hsmm_messages_interface
+  stage: inspect
+  operation: inspect-extension
+- id: extension-pyhsmm.util.cstats
+  stage: inspect
+  operation: inspect-extension
+- id: extension-autoregressive.messages
+  stage: inspect
+  operation: inspect-extension
+- id: cli-moseq2-extract-help
+  stage: smoke
+  operation: run-cli
+- id: cli-moseq2-extract-version
+  stage: smoke
+  operation: run-cli
+- id: cli-moseq2-pca-help
+  stage: smoke
+  operation: run-cli
+- id: cli-moseq2-pca-version
+  stage: smoke
+  operation: run-cli
+- id: cli-moseq2-model-help
+  stage: smoke
+  operation: run-cli
+- id: cli-moseq2-model-version
+  stage: smoke
+  operation: run-cli
+- id: cli-moseq2-viz-help
+  stage: smoke
+  operation: run-cli
+- id: cli-moseq2-viz-version
+  stage: smoke
+  operation: run-cli
+- id: compiled-operation-pybasicbayes
+  stage: smoke
+  operation: compiled-smoke
+- id: compiled-operation-pyhsmm-cstats
+  stage: smoke
+  operation: compiled-smoke
+- id: compiled-operation-pyhsmm-hmm
+  stage: smoke
+  operation: compiled-smoke
+- id: compiled-operation-autoregressive
+  stage: smoke
+  operation: compiled-smoke

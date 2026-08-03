@@ -4,72 +4,96 @@ python: CPython 3.7
 platform: linux_x86_64
 wheels:
   - package: moseq2-extract
+    source_archive_filename: moseq2-extract.tar.gz
+    sdist_filename: moseq2-extract-1.2.0.tar.gz
     filename: moseq2_extract-1.2.0-py3-none-any.whl
     version: 1.2.0
     sha256: 18a0ac4c8322fe9b51fa0b9da377a00ba2a00609743632258a0eeae534249580
+    sdist_sha256: 36a3e20ff114ca224d9766f6d74f3571a842e386e955af886702b21b91f2a152
     python_tag: py3
     abi_tag: none
     platform_tag: any
     source_commit: 39a6f0f88d28fc311c8be96619ee9e53b14d3a96
     source_archive_sha256: cbfa9f8f5210f73158a5151915ed93947bcef94e5afc3dc0b561834f5af6d54f
   - package: moseq2-pca
+    source_archive_filename: moseq2-pca.tar.gz
+    sdist_filename: moseq2-pca-1.2.0.tar.gz
     filename: moseq2_pca-1.2.0-py3-none-any.whl
     version: 1.2.0
     sha256: da69f8c4a4bc4e490a00215a1dfe7ab9a41db75dcd675c7cd8aaf0fe12bf4f34
+    sdist_sha256: 495907ce141038236c78c5ee9419f0dadc7e98aa84cf62fa170a0308c826d093
     python_tag: py3
     abi_tag: none
     platform_tag: any
     source_commit: a7bdbe179084c5d366290cd04f4ab26ee8387aa0
     source_archive_sha256: 3d5f39910ba4434df7c1af0899d87463a9d5274278b7399e72e0a94876060115
   - package: moseq2-model
+    source_archive_filename: moseq2-model.tar.gz
+    sdist_filename: moseq2_model-1.2.0.tar.gz
     filename: moseq2_model-1.2.0-py3-none-any.whl
     version: 1.2.0
     sha256: 39ce268395ed6cdf8b44176bd138cec0dac35220d6a5d7046e50fb4d2b562a67
+    sdist_sha256: 1e305f5c457da3e0765622b62d20e95aea45c42c4836c0f5e0bc47c64275bc75
     python_tag: py3
     abi_tag: none
     platform_tag: any
     source_commit: c7c1e1f1ff22c8670bcf0d929d4ca3a12d53190d
     source_archive_sha256: ab4db337ca5897930f7e4203c5650fcb2dc5976d2557225fcb0b6d560a43fcdc
   - package: moseq2-viz
+    source_archive_filename: moseq2-viz.tar.gz
+    sdist_filename: moseq2-viz-1.3.0.tar.gz
     filename: moseq2_viz-1.3.0-py3-none-any.whl
     version: 1.3.0
     sha256: 6083ffaad2d27301607a8b66397316f6824f00c605a75e87380b16b9482d9ec7
+    sdist_sha256: 5c02f41be328e8e5ffc270868564f876c34663446954fa196b548a856acc308a
     python_tag: py3
     abi_tag: none
     platform_tag: any
     source_commit: f571e0ac84cc26cd7f04ea5cf7478657894b02d8
     source_archive_sha256: 28014697e785fc3f9a97a8193e79481a34e475b49b3ef5872ff781fe9df9e02a
   - package: moseq2-app
+    source_archive_filename: moseq2-app.tar.gz
+    sdist_filename: moseq2-app-1.3.1.tar.gz
     filename: moseq2_app-1.3.1-py3-none-any.whl
     version: 1.3.1
     sha256: 50aa2c3f65aafe2389743c2a80aa207440b496a8393d0a7d155e0dfb2bec8b87
+    sdist_sha256: 3c58bda10f5cd866cbde2f6390a7d0ad982adbaf32879196f733a6055af1729c
     python_tag: py3
     abi_tag: none
     platform_tag: any
     source_commit: 7be1af1f96d7873ff44d6ea5ae45262881d76f9f
     source_archive_sha256: 9046510f1f93888d82b5a20680097fa1e93eb9314ce33bfceb74fe5dfff9005b
   - package: pybasicbayes
+    source_archive_filename: pybasicbayes.tar.gz
+    sdist_filename: pybasicbayes-0.2.4.tar.gz
     filename: pybasicbayes-0.2.4-cp37-cp37m-linux_x86_64.whl
     version: 0.2.4
     sha256: ff2967416084d3a62367b9e47bc8d7061f99e1faa44856c4bdb829e6aa4dbe19
+    sdist_sha256: 3000d9d3b1deedf9ae00f98dfc3a8113697d93e8b3a69b2204c5b6b019141ea8
     python_tag: cp37
     abi_tag: cp37m
     platform_tag: linux_x86_64
     source_commit: 61f65ad6c781288605ec5f7347efcc5dbd73c4fc
     source_archive_sha256: 610d495972c6402a991c6e447712214dec0b145f36b71ac5155290cb0cf5f870
   - package: pyhsmm
+    source_archive_filename: pyhsmm.tar.gz
+    sdist_filename: pyhsmm-0.1.6.tar.gz
     filename: pyhsmm-0.1.6-cp37-cp37m-linux_x86_64.whl
     version: 0.1.6
     sha256: 4a5fd4de73a42aa408cdb99b93f46980b04798e862a07ca8b8fb0881da42b6a3
+    sdist_sha256: 3c5cb9eb8cfbc2960a223e9009acc5fe99c226a5469e9a34e05d9edd605dc7ff
     python_tag: cp37
     abi_tag: cp37m
     platform_tag: linux_x86_64
     source_commit: 4e739166746f92bfc968d281f2c1d31e3471409f
     source_archive_sha256: 9f1e33c72233341c733b77ca3d7668d20c74ad86591df3b50ecc68a6cc2c8593
   - package: pyhsmm-autoregressive
+    source_archive_filename: pyhsmm-autoregressive.tar.gz
+    sdist_filename: autoregressive-0.1.2.tar.gz
     filename: autoregressive-0.1.2-cp37-cp37m-linux_x86_64.whl
     version: 0.1.2
     sha256: c741f543d50bc72eec496ff95a6b7a5c6aed88524b5050b4e20b80a7786e65ac
+    sdist_sha256: 9c6d2b27a119860afd5f9234194cbec275b57e93f2aac5a69e9503c7ef61e50d
     python_tag: cp37
     abi_tag: cp37m
     platform_tag: linux_x86_64

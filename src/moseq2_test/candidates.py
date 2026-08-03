@@ -154,7 +154,15 @@ def build_sources(
             wheel_output = sandbox.wheelhouse / name
             wheel_output.mkdir()
             completed = subprocess.run(
-                [sys.executable, "-m", "build", "--wheel", "--outdir", str(wheel_output)],
+                [
+                    sys.executable,
+                    "-m",
+                    "build",
+                    "--sdist",
+                    "--wheel",
+                    "--outdir",
+                    str(wheel_output),
+                ],
                 cwd=export,
                 check=False,
                 capture_output=True,
@@ -186,6 +194,15 @@ def build_sources(
             if final.exists() and sha256_file(final) != details["sha256"]:
                 raise InvalidConfiguration(f"refusing to overwrite different wheel: {final}")
             shutil.copy2(wheels[0], final)
+            sdists = [
+                path for path in wheel_output.iterdir() if path.is_file() and path.suffix != ".whl"
+            ]
+            if len(sdists) != 1:
+                raise InvalidConfiguration(f"expected one sdist for {name}, found {len(sdists)}")
+            final_sdist = output / sdists[0].name
+            if final_sdist.exists() and sha256_file(final_sdist) != sha256_file(sdists[0]):
+                raise InvalidConfiguration(f"refusing to overwrite different sdist: {final_sdist}")
+            shutil.copy2(sdists[0], final_sdist)
             test_snapshot = output / "test-sources" / name
             shutil.copytree(export, test_snapshot)
             candidates.append(
@@ -196,6 +213,8 @@ def build_sources(
                     sha256=str(details["sha256"]),
                     source_commit=commit,
                     test_source=str(test_snapshot.resolve()),
+                    sdist_location=str(final_sdist.resolve()),
+                    sdist_sha256=sha256_file(final_sdist),
                     dirty=dirty,
                 )
             )

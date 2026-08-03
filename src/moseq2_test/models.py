@@ -47,9 +47,12 @@ class SourceLock(VersionedModel):
 
 class WheelRecord(StrictModel):
     package: str
+    source_archive_filename: str
+    sdist_filename: str
     filename: str
     version: str
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    sdist_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     python_tag: str
     abi_tag: str
     platform_tag: str
@@ -120,6 +123,8 @@ class CandidateRecord(StrictModel):
     sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     source_commit: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
     test_source: str | None = None
+    sdist_location: str | None = None
+    sdist_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     dirty: bool = False
 
 

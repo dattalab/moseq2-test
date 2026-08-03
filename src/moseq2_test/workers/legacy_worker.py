@@ -10,6 +10,7 @@ import importlib
 import json
 import os
 import platform
+import site
 import subprocess
 import sys
 import traceback
@@ -203,10 +204,36 @@ def operation_inspect_installation(parameters):
             record.get("file") and Path(record["file"]).suffix in (".so", ".pyd")
         )
         extensions.append(record)
+    site_packages = [str(Path(path).resolve()) for path in site.getsitepackages()]
+    editable_links = []
+    pth_entries = []
+    for raw_directory in site_packages:
+        directory = Path(raw_directory)
+        editable_links.extend(str(path.resolve()) for path in directory.glob("*.egg-link"))
+        for pth_file in directory.glob("*.pth"):
+            for raw_line in pth_file.read_text(errors="replace").splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("#") or line.startswith("import "):
+                    continue
+                pth_entries.append({"file": str(pth_file.resolve()), "entry": line})
+    console_scripts = []
+    for name in parameters.get("console_scripts", []):
+        path = Path(sys.prefix) / "bin" / name
+        console_scripts.append(
+            {"name": name, "path": str(path.resolve()), "exists": path.is_file()}
+        )
     return {
         "imports": imports,
         "distributions": distributions,
         "extensions": extensions,
+        "console_scripts": console_scripts,
+        "editable_links": editable_links,
+        "pth_entries": pth_entries,
+        "site_packages": site_packages,
+        "sys_path": [str(Path(path).resolve()) if path else str(Path.cwd()) for path in sys.path],
+        "python_executable": str(Path(sys.executable).resolve()),
+        "python_version": sys.version,
+        "python_version_info": list(sys.version_info[:3]),
         "python_prefix": sys.prefix,
     }
 
@@ -222,72 +249,86 @@ def operation_pickle_manifest(parameters):
 
 def operation_compiled_smoke(parameters):
     del parameters
-    import numpy as np
-
     checks = []
-    from pybasicbayes.util.cstats import sample_markov
 
-    states = sample_markov(
-        5,
-        np.array([[1.0, 0.0], [0.0, 1.0]], order="C"),
-        np.array([1.0, 0.0]),
-    )
-    checks.append(
-        {
-            "id": "compiled-operation-pybasicbayes",
+    def capture(check_id, function):
+        try:
+            result = function()
+            result["id"] = check_id
+            checks.append(result)
+        except BaseException as error:
+            checks.append(
+                {
+                    "id": check_id,
+                    "passed": False,
+                    "error_type": type(error).__name__,
+                    "error": str(error),
+                    "traceback": traceback.format_exc(),
+                }
+            )
+
+    def pybasicbayes_check():
+        import numpy as np
+        from pybasicbayes.util.cstats import sample_markov
+
+        states = sample_markov(
+            5,
+            np.array([[1.0, 0.0], [0.0, 1.0]], order="C"),
+            np.array([1.0, 0.0]),
+        )
+        return {
             "passed": bool(np.array_equal(states, np.zeros(5, dtype=np.int32))),
             "states": states.tolist(),
         }
-    )
 
-    from pyhsmm.util.cstats import count_transitions
+    def pyhsmm_cstats_check():
+        import numpy as np
+        from pyhsmm.util.cstats import count_transitions
 
-    counts = count_transitions(np.array([0, 1, 1, 0], dtype=np.int32), 2)
-    expected = np.array([[0, 1], [1, 1]], dtype=np.int32)
-    checks.append(
-        {
-            "id": "compiled-operation-pyhsmm-cstats",
+        counts = count_transitions(np.array([0, 1, 1, 0], dtype=np.int32), 2)
+        expected = np.array([[0, 1], [1, 1]], dtype=np.int32)
+        return {
             "passed": bool(np.array_equal(counts, expected)),
             "counts": counts.tolist(),
+            "expected": expected.tolist(),
         }
-    )
 
-    from pyhsmm.internals.hmm_messages_interface import viterbi
+    def pyhsmm_hmm_check():
+        import numpy as np
+        from pyhsmm.internals.hmm_messages_interface import viterbi
 
-    transition = np.log(np.array([[0.9, 0.1], [0.2, 0.8]], order="C"))
-    likelihood = np.log(np.array([[0.8, 0.2], [0.7, 0.3], [0.1, 0.9]], order="C"))
-    initial = np.log(np.array([0.6, 0.4]))
-    states = viterbi(transition, likelihood, initial, np.empty(3, dtype=np.int32))
-    expected = np.array([0, 0, 0], dtype=np.int32)
-    checks.append(
-        {
-            "id": "compiled-operation-pyhsmm-hmm",
+        transition = np.log(np.array([[0.9, 0.1], [0.2, 0.8]], order="C"))
+        likelihood = np.log(np.array([[0.8, 0.2], [0.7, 0.3], [0.1, 0.9]], order="C"))
+        initial = np.log(np.array([0.6, 0.4]))
+        states = viterbi(transition, likelihood, initial, np.empty(3, dtype=np.int32))
+        expected = np.array([0, 0, 0], dtype=np.int32)
+        return {
             "passed": bool(np.array_equal(states, expected)),
             "states": states.tolist(),
+            "expected": expected.tolist(),
         }
-    )
 
-    from autoregressive.distributions import AutoRegression
-    from autoregressive.models import FastARHMM
+    def autoregressive_check():
+        import numpy as np
+        from autoregressive.distributions import AutoRegression
+        from autoregressive.models import FastARHMM
 
-    np.random.seed(0)
-    observations = [
-        AutoRegression(
-            nu_0=3,
-            S_0=np.eye(1),
-            M_0=np.eye(1),
-            K_0=np.eye(1),
-            affine=False,
-        )
-        for _ in range(2)
-    ]
-    model = FastARHMM(alpha=4.0, init_state_distn="uniform", obs_distns=observations)
-    model.add_data(np.linspace(-1.0, 1.0, 30).reshape(-1, 1).astype("float32"))
-    model.resample_states()
-    states = model.states_list[0].stateseq
-    checks.append(
-        {
-            "id": "compiled-operation-autoregressive",
+        np.random.seed(0)
+        observations = [
+            AutoRegression(
+                nu_0=3,
+                S_0=np.eye(1),
+                M_0=np.eye(1),
+                K_0=np.eye(1),
+                affine=False,
+            )
+            for _ in range(2)
+        ]
+        model = FastARHMM(alpha=4.0, init_state_distn="uniform", obs_distns=observations)
+        model.add_data(np.linspace(-1.0, 1.0, 30).reshape(-1, 1).astype("float32"))
+        model.resample_states()
+        states = model.states_list[0].stateseq
+        return {
             "passed": bool(
                 states.shape == (29,)
                 and states.dtype == np.dtype("int32")
@@ -297,7 +338,11 @@ def operation_compiled_smoke(parameters):
             "dtype": str(states.dtype),
             "unique_states": np.unique(states).tolist(),
         }
-    )
+
+    capture("compiled-operation-pybasicbayes", pybasicbayes_check)
+    capture("compiled-operation-pyhsmm-cstats", pyhsmm_cstats_check)
+    capture("compiled-operation-pyhsmm-hmm", pyhsmm_hmm_check)
+    capture("compiled-operation-autoregressive", autoregressive_check)
     return {"checks": checks, "passed": all(check["passed"] for check in checks)}
 
 

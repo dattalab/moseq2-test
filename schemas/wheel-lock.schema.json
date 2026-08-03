@@ -23,9 +23,22 @@
           "title": "Python Tag",
           "type": "string"
         },
+        "sdist_filename": {
+          "title": "Sdist Filename",
+          "type": "string"
+        },
+        "sdist_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sdist Sha256",
+          "type": "string"
+        },
         "sha256": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Sha256",
+          "type": "string"
+        },
+        "source_archive_filename": {
+          "title": "Source Archive Filename",
           "type": "string"
         },
         "source_archive_sha256": {
@@ -45,9 +58,12 @@
       },
       "required": [
         "package",
+        "source_archive_filename",
+        "sdist_filename",
         "filename",
         "version",
         "sha256",
+        "sdist_sha256",
         "python_tag",
         "abi_tag",
         "platform_tag",
