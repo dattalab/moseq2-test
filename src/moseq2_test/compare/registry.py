@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml as yaml_parser
 
@@ -160,6 +160,30 @@ def compare(
 def _canonical_run(path: Path) -> dict[str, Any]:
     record = RunRecord.model_validate_json((path / "run.json").read_text(encoding="utf-8"))
     value = record.model_dump(mode="json")
+    provenance = value.get("provenance", {})
+    display_paths = provenance.get("display_paths", {})
+    sandbox_roots: set[str] = set()
+    if isinstance(display_paths, dict):
+        for display_path in display_paths.values():
+            if not isinstance(display_path, str) or not display_path.startswith("/"):
+                continue
+            candidate = Path(display_path)
+            for parent in (candidate, *candidate.parents):
+                if parent.name.startswith("moseq2-test-"):
+                    sandbox_roots.add(str(parent))
+                    break
+
+    def normalize_ephemeral_paths(item: Any) -> Any:
+        if isinstance(item, dict):
+            return {key: normalize_ephemeral_paths(nested) for key, nested in item.items()}
+        if isinstance(item, list):
+            return [normalize_ephemeral_paths(nested) for nested in item]
+        if isinstance(item, str):
+            for sandbox_root in sorted(sandbox_roots, key=len, reverse=True):
+                item = item.replace(sandbox_root, "<sandbox>")
+        return item
+
+    value = cast(dict[str, Any], normalize_ephemeral_paths(value))
     value.pop("run_id", None)
     value.pop("started_at", None)
     value.pop("completed_at", None)
@@ -167,7 +191,25 @@ def _canonical_run(path: Path) -> dict[str, Any]:
         command.pop("duration_seconds", None)
         command.pop("stdout", None)
         command.pop("stderr", None)
-    value.get("provenance", {}).pop("display_paths", None)
+    for comparison in value.get("comparisons", []):
+        # Byte hashes retain audit value in the individual run record, but they
+        # are deliberately non-semantic whenever that artifact comparator has
+        # ignored fields or tolerances. Compare the comparator's status and
+        # structured differences here instead.
+        comparison.pop("expected_sha256", None)
+        comparison.pop("actual_sha256", None)
+    historical_suites = (
+        value.get("environment", {}).get("historical_results", {}).get("suites", {})
+    )
+    if isinstance(historical_suites, dict):
+        for suite in historical_suites.values():
+            if isinstance(suite, dict):
+                suite.pop("time", None)
+    provenance = value.get("provenance", {})
+    provenance.pop("display_paths", None)
+    environment_variables = provenance.get("environment_variables", {})
+    if isinstance(environment_variables, dict):
+        environment_variables.pop("HOSTNAME", None)
     return value
 
 

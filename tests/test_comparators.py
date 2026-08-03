@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-from moseq2_test.compare.registry import compare
+from moseq2_test.compare.registry import compare, compare_runs
 from moseq2_test.models import ComparisonStatus, IntentionalChange
 
 
@@ -162,3 +162,103 @@ def test_worker_generated_model_json_is_compared(tmp_path: Path) -> None:
     expected.write_text(json.dumps(value))
     actual.write_text(json.dumps(value))
     assert compare("trusted-model", expected, actual, "model-v1").status == "equal"
+
+
+def _write_run(
+    path: Path,
+    *,
+    sandbox: str,
+    hostname: str,
+    classification: str,
+    suite_time: float = 1.0,
+    artifact_sha256: str = "a" * 64,
+) -> None:
+    path.mkdir()
+    target_python = f"{sandbox}/target-env/runtime/bin/python"
+    value = {
+        "schema_version": 1,
+        "run_id": Path(sandbox).name,
+        "framework_version": "0.1.0",
+        "worker_protocol_version": 1,
+        "profile": "install-smoke",
+        "status": "accepted",
+        "started_at": "2026-08-03T12:00:00Z",
+        "completed_at": "2026-08-03T12:01:00Z",
+        "seed": 0,
+        "commands": [
+            {
+                "id": "cli",
+                "command": [target_python, "--version"],
+                "returncode": 0,
+                "duration_seconds": 1.0,
+                "classification": classification,
+            }
+        ],
+        "comparisons": [
+            {
+                "schema_version": 1,
+                "status": "equal",
+                "kind": "hdf5",
+                "comparator": "moseq2-test:hdf5",
+                "comparator_version": "1",
+                "expected_sha256": artifact_sha256,
+                "actual_sha256": artifact_sha256,
+                "policy": "hdf5-v1",
+                "summary": "semantic values are equal",
+            }
+        ],
+        "environment": {
+            "target": {
+                "prefix": f"{sandbox}/target-env/runtime",
+                "variables": {"PATH": f"{sandbox}/target-env/runtime/bin:/usr/bin"},
+            },
+            "historical_results": {
+                "suites": {"moseq2-extract": {"tests": 70, "time": suite_time}}
+            },
+        },
+        "provenance": {
+            "display_paths": {"target_python": target_python},
+            "environment_variables": {"HOSTNAME": hostname, "LANG": "C.UTF-8"},
+        },
+    }
+    (path / "run.json").write_text(json.dumps(value), encoding="utf-8")
+
+
+def test_run_comparison_ignores_disposable_sandboxes_and_hostnames(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _write_run(
+        expected,
+        sandbox="/workspace/first/moseq2-test-install-smoke-alpha",
+        hostname="cold-container",
+        classification="passed",
+    )
+    _write_run(
+        actual,
+        sandbox="/workspace/second/moseq2-test-install-smoke-beta",
+        hostname="warm-container",
+        classification="passed",
+        suite_time=2.0,
+        artifact_sha256="b" * 64,
+    )
+
+    assert compare_runs(expected, actual).status == "equal"
+
+
+def test_run_comparison_preserves_semantic_command_results(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _write_run(
+        expected,
+        sandbox="/workspace/first/moseq2-test-install-smoke-alpha",
+        hostname="cold-container",
+        classification="passed",
+    )
+    _write_run(
+        actual,
+        sandbox="/workspace/second/moseq2-test-install-smoke-beta",
+        hostname="warm-container",
+        classification="failed",
+    )
+
+    assert compare_runs(expected, actual).status == "different"

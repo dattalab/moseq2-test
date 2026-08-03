@@ -58,6 +58,13 @@ fixtures, commands, return codes, classifications, comparisons, environment,
 known-failure matches, retained outputs, and provenance. Partial records are
 written for setup, infrastructure, test, and comparison failures.
 
+Cross-run comparison retains outcome classifications, structured semantic
+differences, package identities, locks, fixtures, and stable environment facts.
+It excludes execution timings, disposable sandbox paths, container hostnames,
+and raw artifact hashes after the typed artifact comparator has already judged
+their normalized semantics. This permits independent cold and offline-warm
+runs to compare equal without concealing a result or scientific-output change.
+
 ## Central and caller repositories
 
 The central repository owns all test machinery. Each DattaLab package caller
