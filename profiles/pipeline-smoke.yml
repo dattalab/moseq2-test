@@ -1,6 +1,6 @@
 schema_version: 1
 name: pipeline-smoke
-implemented: false
+implemented: true
 owner: dattalab/moseq2-test maintainers
 description: Compact real-data extraction, PCA, model, visualization, and app pipeline regression.
 packages:
@@ -101,7 +101,7 @@ steps:
   - id: run-2-pristine-good-session-timestamp-qc
     stage: extract
     operation: seeded-cli
-    depends_on: [run-1-app-noninteractive-smoke]
+    depends_on: [prepare-compact-real-data-project]
     expected_failure: pipeline-pristine-good-timestamp-mismatch
   - id: run-2-pristine-bad-session-timestamp-qc
     stage: extract
@@ -140,7 +140,7 @@ steps:
   - id: run-2-reference-model-apply
     stage: model
     operation: cli
-    depends_on: [run-2-model-train-smoke]
+    depends_on: [run-2-model-train-smoke, run-1-model-train-smoke]
     outputs: [run-2-reference-model-application]
   - id: run-2-viz-make-dataframe
     stage: viz

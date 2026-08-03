@@ -6,23 +6,47 @@ import copy
 import json
 import os
 import re
+import secrets
 import shutil
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import h5py  # type: ignore[import-untyped]
 import yaml
 
+from moseq2_test import WORKER_PROTOCOL_VERSION, __version__
+from moseq2_test.candidates import build_sources, canonical_package
+from moseq2_test.compare.registry import compare, load_intentional_change
 from moseq2_test.data import CacheLayout, extract_object, fetch_selected
-from moseq2_test.errors import InvalidConfiguration
+from moseq2_test.errors import ExitCode, InvalidConfiguration, MissingInput, Moseq2TestError
 from moseq2_test.execution.process import execute_worker
 from moseq2_test.execution.protocol import WorkerRequest
-from moseq2_test.models import CommandResult, FixtureManifest, FixtureObject, KnownFailure
-from moseq2_test.registry import fixture_manifest, known_failures
-from moseq2_test.sandbox import Sandbox
-from moseq2_test.suites.install_smoke import _json
+from moseq2_test.models import (
+    CandidateRecord,
+    CommandResult,
+    ComparisonResult,
+    ComparisonStatus,
+    FixtureManifest,
+    FixtureObject,
+    KnownFailure,
+    RunRecord,
+    SuiteProfile,
+)
+from moseq2_test.provenance import controller_environment, redacted_environment
+from moseq2_test.registry import fixture_manifest, known_failures, source_lock, wheel_lock
+from moseq2_test.reporting import write_run_directory
+from moseq2_test.sandbox import Sandbox, assert_unchanged, snapshot_tree
+from moseq2_test.suites.install_smoke import (
+    _apply_test_sources,
+    _artifact_roots,
+    _baseline_candidates,
+    _create_layered_target,
+    _explicit_candidates,
+    _json,
+)
 
 FRAME_LIMIT = 3000
 SELECTED_UUIDS = (
@@ -56,6 +80,9 @@ class PipelineRunState:
     index: Path
     commands: list[CommandResult]
     known_failure_results: list[dict[str, Any]]
+    training_invariants: dict[str, Any] = field(default_factory=dict)
+    model_summaries: dict[str, Path] = field(default_factory=dict)
+    specific_syllable: int | None = None
 
 
 def _object_by_id(manifest: FixtureManifest, object_id: str) -> FixtureObject:
@@ -709,3 +736,800 @@ def execute_extraction_pca_run(
         seed=seed,
     )
     return state
+
+
+def _worker_json(
+    state: PipelineRunState,
+    *,
+    request_id: str,
+    operation: str,
+    parameters: dict[str, Any],
+    target_python: Path,
+    sandbox: Sandbox,
+    environment: dict[str, str],
+    timeout: int,
+) -> tuple[dict[str, Any], float]:
+    started = time.monotonic()
+    response = execute_worker(
+        target_python,
+        WorkerRequest(
+            request_id=request_id,
+            operation=operation,
+            parameters=parameters,
+        ),
+        work=sandbox.work / "worker",
+        timeout=timeout,
+        environment=environment,
+    )
+    duration = time.monotonic() - started
+    if response.result is None:
+        raise InvalidConfiguration(f"pipeline worker operation returned no result: {request_id}")
+    output = sandbox.result / f"{request_id}.json"
+    output.write_text(_json(response.result), encoding="utf-8")
+    return response.result, duration
+
+
+def _write_model_analysis(
+    state: PipelineRunState,
+    *,
+    analysis_id: str,
+    model_path: Path,
+    score_path: Path | None,
+    target_python: Path,
+    sandbox: Sandbox,
+    environment: dict[str, str],
+    timeout: int,
+) -> dict[str, Any]:
+    parameters: dict[str, Any] = {"trusted": True, "path": str(model_path)}
+    if score_path is not None:
+        parameters["score_path"] = str(score_path)
+    result, _ = _worker_json(
+        state,
+        request_id=analysis_id,
+        operation="model-analysis",
+        parameters=parameters,
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=timeout,
+    )
+    summary_path = model_path.with_suffix(".summary.json")
+    summary_path.write_text(_json(result["summary"]), encoding="utf-8")
+    state.model_summaries[analysis_id] = summary_path
+    return result
+
+
+def execute_downstream_run(
+    state: PipelineRunState,
+    inputs: PipelineInputs,
+    *,
+    target_python: Path,
+    sandbox: Sandbox,
+    timeout: int,
+    seed: int,
+    reference_model: Path | None = None,
+) -> Path:
+    """Execute model, visualization, and noninteractive app stages for one run."""
+    environment = _pipeline_environment(target_python, sandbox, seed)
+    step_timeout = min(timeout, 600)
+    pca_scores = state.root / "_pca" / "pca_scores_applied.h5"
+    _execute_command(
+        state,
+        step_id=f"run-{state.number}-legacy-saved-model-apply",
+        command=[
+            str(target_python.parent / "moseq2-model"),
+            "apply-model",
+            str(inputs.legacy_model),
+            str(pca_scores),
+            str(state.root / "models" / "legacy_model_apply_failure.p"),
+            "--index",
+            str(state.index),
+            "--load-groups",
+            "True",
+        ],
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+        expected_failure="pipeline-legacy-model-lacks-whitening",
+    )
+
+    trained_model = state.root / "models" / "trained_smoke.p"
+    _execute_seeded(
+        state,
+        step_id=f"run-{state.number}-model-train-smoke",
+        module="moseq2_model.cli",
+        arguments=[
+            "learn-model",
+            str(pca_scores),
+            str(trained_model),
+            "--index",
+            str(state.index),
+            "--num-iter",
+            "2",
+            "--max-states",
+            "10",
+            "--npcs",
+            "5",
+            "--kappa",
+            "10000",
+            "--ncpus",
+            "1",
+            "--progressbar",
+            "False",
+            "--save-every",
+            "-1",
+            "--save-model",
+            "True",
+            "--whiten",
+            "all",
+            "--hold-out-seed",
+            "0",
+            "--e-step",
+        ],
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+        seed=seed,
+    )
+    training = _write_model_analysis(
+        state,
+        analysis_id=f"run-{state.number}-fresh-training-analysis",
+        model_path=trained_model,
+        score_path=pca_scores,
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+    )
+    state.training_invariants = dict(training.get("invariants", {}))
+    if state.training_invariants.get("passed") is not True:
+        raise InvalidConfiguration(
+            f"fresh model training invariants failed in run {state.number}: "
+            f"{state.training_invariants}"
+        )
+
+    selected_reference = reference_model or trained_model
+    reference_applied = state.root / "models" / "reference_model_applied.p"
+    _execute_command(
+        state,
+        step_id=f"run-{state.number}-reference-model-apply",
+        command=[
+            str(target_python.parent / "moseq2-model"),
+            "apply-model",
+            str(selected_reference),
+            str(pca_scores),
+            str(reference_applied),
+            "--index",
+            str(state.index),
+            "--load-groups",
+            "True",
+        ],
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+    )
+    reference = _write_model_analysis(
+        state,
+        analysis_id=f"run-{state.number}-reference-model-analysis",
+        model_path=reference_applied,
+        score_path=None,
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+    )
+    specific_syllable = reference.get("specific_syllable")
+    if not isinstance(specific_syllable, int) or specific_syllable < 0:
+        raise InvalidConfiguration(
+            f"reference model has no nonnegative syllable for run {state.number}"
+        )
+    state.specific_syllable = specific_syllable
+
+    dataframe = state.root / "viz" / "moseq_df.csv"
+    _execute_command(
+        state,
+        step_id=f"run-{state.number}-viz-make-dataframe",
+        command=[
+            str(target_python.parent / "moseq2-viz"),
+            "make-df",
+            str(reference_applied),
+            str(state.index),
+            "--output-file",
+            str(dataframe),
+        ],
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+    )
+    _execute_command(
+        state,
+        step_id=f"run-{state.number}-viz-transition-graph",
+        command=[
+            str(target_python.parent / "moseq2-viz"),
+            "plot-transition-graph",
+            str(state.index),
+            str(reference_applied),
+            "--max-syllable",
+            "5",
+            "--output-file",
+            str(state.root / "viz" / "transitions"),
+            "--layout",
+            "spring",
+            "--sort",
+            "True",
+        ],
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+    )
+    crowd_directory = state.root / "viz" / "crowd_movies"
+    _execute_command(
+        state,
+        step_id=f"run-{state.number}-viz-crowd-movie",
+        command=[
+            str(target_python.parent / "moseq2-viz"),
+            "make-crowd-movies",
+            str(state.index),
+            str(reference_applied),
+            "--specific-syllable",
+            str(specific_syllable),
+            "--max-examples",
+            "3",
+            "--processes",
+            "1",
+            "--output-dir",
+            str(crowd_directory),
+            "--pad",
+            "5",
+            "--seed",
+            str(seed),
+        ],
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+    )
+
+    app_step = f"run-{state.number}-app-noninteractive-smoke"
+    app_result, app_duration = _worker_json(
+        state,
+        request_id=app_step,
+        operation="app-smoke",
+        parameters={"index": str(state.index), "model": str(reference_applied)},
+        target_python=target_python,
+        sandbox=sandbox,
+        environment=environment,
+        timeout=step_timeout,
+    )
+    app_output = state.root / "app_smoke.json"
+    app_output.write_text(_json(app_result), encoding="utf-8")
+    app_passed = app_result.get("status") == "pass"
+    state.commands.append(
+        CommandResult(
+            id=app_step,
+            command=[
+                str(target_python),
+                "worker:app-smoke",
+                str(state.index),
+                str(reference_applied),
+            ],
+            returncode=0 if app_passed else 1,
+            duration_seconds=app_duration,
+            stdout=_json(app_result),
+            classification="passed" if app_passed else "failed",
+        )
+    )
+    return trained_model
+
+
+def _first_crowd_movie(root: Path) -> Path:
+    movies = sorted((root / "viz" / "crowd_movies").glob("*.mp4"))
+    if len(movies) != 1:
+        raise InvalidConfiguration(
+            f"expected exactly one crowd movie in {root}, found {len(movies)}"
+        )
+    return movies[0]
+
+
+def _pipeline_comparisons(
+    run_1: PipelineRunState,
+    run_2: PipelineRunState,
+    *,
+    include_downstream: bool,
+    intentional_change: Path | None,
+) -> tuple[list[ComparisonResult], list[dict[str, Any]]]:
+    specifications: list[tuple[str, Path, Path, str, str, bool]] = [
+        (
+            "extraction-h5",
+            run_1.root / "extraction" / "compatible-good" / "proc" / "results_00.h5",
+            run_2.root / "extraction" / "compatible-good" / "proc" / "results_00.h5",
+            "extraction-h5",
+            "extraction-v1",
+            True,
+        ),
+        (
+            "extraction-yaml",
+            run_1.root / "extraction" / "compatible-good" / "proc" / "results_00.yaml",
+            run_2.root / "extraction" / "compatible-good" / "proc" / "results_00.yaml",
+            "yaml",
+            "extraction-yaml-v1",
+            True,
+        ),
+        (
+            "extraction-video",
+            run_1.root / "extraction" / "compatible-good" / "proc" / "results_00.mp4",
+            run_2.root / "extraction" / "compatible-good" / "proc" / "results_00.mp4",
+            "video",
+            "video-v1",
+            True,
+        ),
+        (
+            "pca-scores",
+            run_1.root / "_pca" / "pca_scores_applied.h5",
+            run_2.root / "_pca" / "pca_scores_applied.h5",
+            "hdf5",
+            "hdf5-v1",
+            True,
+        ),
+        (
+            "changepoints",
+            run_1.root / "_pca" / "changepoints.h5",
+            run_2.root / "_pca" / "changepoints.h5",
+            "hdf5",
+            "hdf5-v1",
+            True,
+        ),
+    ]
+    if include_downstream:
+        specifications.extend(
+            [
+                (
+                    "reference-model-application",
+                    run_1.model_summaries["run-1-reference-model-analysis"],
+                    run_2.model_summaries["run-2-reference-model-analysis"],
+                    "trusted-model",
+                    "model-v1",
+                    True,
+                ),
+                (
+                    "viz-dataframe",
+                    run_1.root / "viz" / "moseq_df.csv",
+                    run_2.root / "viz" / "moseq_df.csv",
+                    "table",
+                    "table-v1",
+                    True,
+                ),
+                (
+                    "crowd-movie",
+                    _first_crowd_movie(run_1.root),
+                    _first_crowd_movie(run_2.root),
+                    "video",
+                    "video-v1",
+                    True,
+                ),
+                (
+                    "app-smoke",
+                    run_1.root / "app_smoke.json",
+                    run_2.root / "app_smoke.json",
+                    "yaml",
+                    "yaml-v1",
+                    True,
+                ),
+                (
+                    "fresh-training-structure",
+                    run_1.model_summaries["run-1-fresh-training-analysis"],
+                    run_2.model_summaries["run-2-fresh-training-analysis"],
+                    "trusted-model",
+                    "model-v1",
+                    False,
+                ),
+            ]
+        )
+    change = load_intentional_change(intentional_change) if intentional_change else None
+    results: list[ComparisonResult] = []
+    index: list[dict[str, Any]] = []
+    for comparison_id, expected, actual, kind, policy, required_equal in specifications:
+        if not expected.is_file() or not actual.is_file():
+            raise InvalidConfiguration(f"missing pipeline comparison artifact: {comparison_id}")
+        result = compare(
+            kind,
+            expected,
+            actual,
+            policy,
+            intentional_change=change,
+        )
+        results.append(result)
+        index.append(
+            {
+                "id": comparison_id,
+                "required_equal": required_equal,
+                "expected": (
+                    Path("outputs") / "run-1" / expected.relative_to(run_1.root)
+                ).as_posix(),
+                "actual": (Path("outputs") / "run-2" / actual.relative_to(run_2.root)).as_posix(),
+                "result_index": len(results) - 1,
+                "status": result.status.value,
+            }
+        )
+    return results, index
+
+
+def _pipeline_run_id(now: datetime | None = None) -> str:
+    timestamp = (now or datetime.now(UTC)).strftime("%Y%m%dT%H%M%SZ")
+    return f"{timestamp}-{secrets.token_hex(4)}"
+
+
+def _copy_pipeline_evidence(
+    sandbox: Sandbox,
+    run_directory: Path,
+    states: list[PipelineRunState],
+) -> list[dict[str, Any]]:
+    retained: list[dict[str, Any]] = []
+    for state in states:
+        destination = run_directory / "outputs" / f"run-{state.number}"
+        shutil.copytree(state.root, destination)
+        retained.append(
+            {
+                "id": f"run-{state.number}",
+                "path": destination.relative_to(run_directory).as_posix(),
+                "files": len(snapshot_tree(destination)),
+            }
+        )
+    logs = run_directory / "logs"
+    for root in (sandbox.result, sandbox.work / "worker"):
+        if not root.is_dir():
+            continue
+        for path in root.iterdir():
+            if path.is_file():
+                destination = logs / path.name
+                if destination.exists():
+                    destination = logs / f"{root.name}-{path.name}"
+                shutil.copy2(path, destination)
+    return retained
+
+
+def _validate_pipeline_selection(options: Any) -> bool:
+    if options.packages or options.steps:
+        raise InvalidConfiguration(
+            "pipeline package/step diagnostic selection will be enabled with package integrations"
+        )
+    allowed_stages = {"prepare", "extract", "pca", "model", "viz", "app", "compare"}
+    if options.start_at not in allowed_stages | {None}:
+        raise InvalidConfiguration(f"unknown pipeline --start-at stage: {options.start_at}")
+    if options.through not in allowed_stages | {None}:
+        raise InvalidConfiguration(f"unknown pipeline --through stage: {options.through}")
+    if options.start_at not in {None, "model"}:
+        raise InvalidConfiguration("only --start-at model is currently meaningful for this DAG")
+    if options.through not in {None, "pca"}:
+        raise InvalidConfiguration("only --through pca is currently supported for this DAG")
+    if options.start_at == "model" and options.through == "pca":
+        raise InvalidConfiguration("--start-at model cannot be combined with --through pca")
+    return bool(options.through != "pca")
+
+
+def run_pipeline_smoke(options: Any, profile: SuiteProfile) -> tuple[Path, int]:
+    """Run the installed eight-package compact real-data pipeline twice."""
+    started_at = datetime.now(UTC)
+    run_id = _pipeline_run_id(started_at)
+    run_directory = (options.output_dir / run_id).resolve()
+    include_downstream = _validate_pipeline_selection(options)
+    timeout = options.timeout or profile.resources.timeout_seconds
+    if timeout > profile.resources.timeout_seconds:
+        raise InvalidConfiguration("--timeout cannot exceed the profile certification ceiling")
+    if options.keep_sandbox not in {"always", "failure", "never"}:
+        raise InvalidConfiguration("--keep-sandbox must be always, failure, or never")
+    if options.executor != "process":
+        raise InvalidConfiguration("pipeline container execution is unavailable until P10")
+    if options.target_python is None:
+        raise MissingInput("pipeline process execution requires --target-python")
+    if options.fixture_set not in {None, "pipeline-smoke-v1"}:
+        raise InvalidConfiguration("pipeline-smoke requires fixture set pipeline-smoke-v1")
+    base_python = options.target_python.expanduser().absolute()
+    if not base_python.is_file():
+        raise MissingInput(f"target Python does not exist: {base_python}")
+
+    sandbox = Sandbox.create(options.workspace, prefix="moseq2-test-pipeline-")
+    source_manifest = source_lock(options.baseline_lock)
+    wheel_manifest = wheel_lock("moseq2-baseline-linux-py37-v1")
+    fixture = fixture_manifest("pipeline-smoke-v1")
+    commands: list[CommandResult] = []
+    comparisons: list[ComparisonResult] = []
+    comparison_index: list[dict[str, Any]] = []
+    policy_results: list[dict[str, Any]] = []
+    resolved_candidates: list[CandidateRecord] = []
+    states: list[PipelineRunState] = []
+    target_python = base_python
+    inputs: PipelineInputs | None = None
+    failure_stage: str | None = None
+    environment: dict[str, Any] = {"controller": controller_environment()}
+    provenance: dict[str, Any] = {
+        "environment_variables": redacted_environment(),
+        "executor": "process",
+        "dask": {"mode": "local", "workers": 1, "slurm_submitted": False},
+        "requested_slice": {"start_at": options.start_at, "through": options.through},
+    }
+    try:
+        base_prefix = base_python.parent.parent.resolve()
+        roots = _artifact_roots(base_prefix)
+        baseline_candidates = _baseline_candidates(wheel_manifest, roots["wheel"])
+        candidate_records = _explicit_candidates(options.candidates, options.candidate_set)
+        if options.sources:
+            built = build_sources(
+                options.sources,
+                workspace=sandbox.build / "candidate-workspace",
+                output=sandbox.build / "candidate-output",
+                allow_dirty=options.allow_dirty_source,
+            )
+            candidate_records.extend(built.candidates)
+        candidate_names = [canonical_package(item.package) for item in candidate_records]
+        if len(candidate_names) != len(set(candidate_names)):
+            raise InvalidConfiguration("duplicate pipeline candidate packages")
+        candidate_by_name = {canonical_package(item.package): item for item in candidate_records}
+        unknown = set(candidate_by_name) - {
+            canonical_package(item.package) for item in baseline_candidates
+        }
+        if unknown:
+            raise InvalidConfiguration(f"candidate set has unknown packages: {sorted(unknown)}")
+        resolved_candidates = [
+            candidate_by_name.get(canonical_package(item.package), item)
+            for item in baseline_candidates
+        ]
+        resolved_candidates = _apply_test_sources(resolved_candidates, options.test_sources)
+        target_python = _create_layered_target(base_python, sandbox, candidate_records, timeout)
+
+        mirror_value = os.environ.get("MOSEQ2_TEST_FIXTURE_MIRROR")
+        mirror = Path(mirror_value) if mirror_value else None
+        preparation_started = time.monotonic()
+        inputs = derive_pipeline_inputs(
+            options.cache_dir,
+            sandbox.inputs / "pipeline-project",
+            mirror=mirror,
+            offline=options.offline,
+        )
+        commands.append(
+            CommandResult(
+                id="prepare-compact-real-data-project",
+                command=["moseq2-test", "data", "derive", "pipeline-smoke-v1"],
+                returncode=0,
+                duration_seconds=time.monotonic() - preparation_started,
+                stdout=_json(inputs.derivation),
+                classification="passed",
+            )
+        )
+        input_snapshot = snapshot_tree(inputs.root)
+        run_1 = execute_extraction_pca_run(
+            1,
+            inputs,
+            target_python=target_python,
+            sandbox=sandbox,
+            timeout=timeout,
+            seed=options.seed,
+        )
+        states.append(run_1)
+        if include_downstream:
+            reference = execute_downstream_run(
+                run_1,
+                inputs,
+                target_python=target_python,
+                sandbox=sandbox,
+                timeout=timeout,
+                seed=options.seed,
+            )
+        else:
+            reference = None
+        run_2 = execute_extraction_pca_run(
+            2,
+            inputs,
+            target_python=target_python,
+            sandbox=sandbox,
+            timeout=timeout,
+            seed=options.seed,
+        )
+        states.append(run_2)
+        if include_downstream:
+            execute_downstream_run(
+                run_2,
+                inputs,
+                target_python=target_python,
+                sandbox=sandbox,
+                timeout=timeout,
+                seed=options.seed,
+                reference_model=reference,
+            )
+        assert_unchanged(inputs.root, input_snapshot)
+        commands.extend(run_1.commands)
+        commands.extend(run_2.commands)
+        policy_results = run_1.known_failure_results + run_2.known_failure_results
+        comparisons, comparison_index = _pipeline_comparisons(
+            run_1,
+            run_2,
+            include_downstream=include_downstream,
+            intentional_change=options.intentional_change,
+        )
+        environment["target"] = {
+            "python": str(target_python),
+            "base_python": str(base_python),
+        }
+        environment["pipeline_results"] = {
+            "full_profile": include_downstream,
+            "input_derivation": inputs.derivation,
+            "runs": {
+                f"run-{state.number}": {
+                    "training_invariants": state.training_invariants,
+                    "specific_syllable": state.specific_syllable,
+                }
+                for state in states
+            },
+            "comparison_index": comparison_index,
+        }
+        provenance["display_paths"] = {
+            "sandbox": str(sandbox.root),
+            "base_python": str(base_python),
+            "target_python": str(target_python),
+            "fixture_mirror": str(mirror) if mirror else None,
+        }
+        provenance["flip_classifier"] = inputs.derivation["flip_classifier"]
+    except Moseq2TestError as error:
+        failure_stage = "setup"
+        commands.append(
+            CommandResult(
+                id="setup",
+                command=["moseq2-test", "run", "pipeline-smoke"],
+                returncode=int(error.exit_code),
+                duration_seconds=0,
+                stdout=_json({"error_type": type(error).__name__, "error": str(error)}),
+                classification="failed",
+            )
+        )
+    except Exception as error:
+        failure_stage = "infrastructure"
+        commands.append(
+            CommandResult(
+                id="infrastructure",
+                command=["moseq2-test", "run", "pipeline-smoke"],
+                returncode=1,
+                duration_seconds=0,
+                stdout=_json({"error_type": type(error).__name__, "error": str(error)}),
+                classification="failed",
+            )
+        )
+
+    accepted_classes = {"passed", "known-failure"}
+    required_comparisons = [
+        comparisons[item["result_index"]] for item in comparison_index if item["required_equal"]
+    ]
+    comparison_pass = all(
+        result.status in {ComparisonStatus.EQUAL, ComparisonStatus.EXPECTED_CHANGE}
+        for result in required_comparisons
+    )
+    comparison_valid = all(
+        result.status not in {ComparisonStatus.INVALID, ComparisonStatus.ERROR}
+        for result in comparisons
+    )
+    expected_command_count = 28 if include_downstream else 14
+    expected_comparison_count = 10 if include_downstream else 5
+    expected_required_count = 9 if include_downstream else 5
+    training_pass = not include_downstream or all(
+        state.training_invariants.get("passed") is True for state in states
+    )
+    expected_ids = [
+        step.id
+        for step in profile.steps
+        if include_downstream or step.stage in {"prepare", "extract", "pca"}
+    ]
+    expected_failure_counts = {
+        "pipeline-pristine-good-timestamp-mismatch": 2,
+        "pipeline-pristine-bad-timestamp-mismatch": 2,
+        "pipeline-changepoints-nodask-not-implemented": 1,
+    }
+    if include_downstream:
+        expected_failure_counts["pipeline-legacy-model-lacks-whitening"] = 2
+    actual_failure_counts = {
+        failure_id: sum(
+            value.get("known_failure_id") == failure_id and value.get("status") == "known-failure"
+            for value in policy_results
+        )
+        for failure_id in expected_failure_counts
+    }
+    failure_policy_pass = actual_failure_counts == expected_failure_counts and len(
+        policy_results
+    ) == sum(expected_failure_counts.values())
+    environment.setdefault("pipeline_results", {}).update(
+        {
+            "expected_command_ids": expected_ids,
+            "known_failure_counts": actual_failure_counts,
+            "expected_known_failure_counts": expected_failure_counts,
+        }
+    )
+    accepted = (
+        failure_stage is None
+        and len(commands) == expected_command_count
+        and [command.id for command in commands] == expected_ids
+        and all(command.classification in accepted_classes for command in commands)
+        and len(comparisons) == expected_comparison_count
+        and len(required_comparisons) == expected_required_count
+        and comparison_pass
+        and comparison_valid
+        and training_pass
+        and failure_policy_pass
+    )
+    if not accepted and failure_stage is None:
+        failure_stage = "pipeline"
+    record = RunRecord(
+        run_id=run_id,
+        framework_version=__version__,
+        worker_protocol_version=WORKER_PROTOCOL_VERSION,
+        profile=profile.name,
+        status="accepted" if accepted else "failed",
+        failure_stage=failure_stage,
+        started_at=started_at,
+        completed_at=datetime.now(UTC),
+        seed=options.seed,
+        source_lock=source_manifest.lock_id,
+        wheel_lock=wheel_manifest.lock_id,
+        fixture_sets=[fixture.fixture_set],
+        candidates=resolved_candidates,
+        commands=commands,
+        comparisons=comparisons,
+        known_failure_results=policy_results,
+        environment=environment,
+        provenance=provenance,
+    )
+    write_run_directory(
+        run_directory,
+        record,
+        resolved_config={
+            "profile": profile.name,
+            "baseline_lock": options.baseline_lock,
+            "fixture_set": fixture.fixture_set,
+            "seed": options.seed,
+            "start_at": options.start_at,
+            "through": options.through,
+        },
+    )
+    (run_directory / "source-lock.json").write_text(
+        _json(source_manifest.model_dump(mode="json")), encoding="utf-8"
+    )
+    (run_directory / "wheel-lock.json").write_text(
+        _json(wheel_manifest.model_dump(mode="json")), encoding="utf-8"
+    )
+    (run_directory / "fixture-manifest.json").write_text(
+        _json(fixture.model_dump(mode="json")), encoding="utf-8"
+    )
+    (run_directory / "manifests" / "suite-profile.json").write_text(
+        _json(profile.model_dump(mode="json")), encoding="utf-8"
+    )
+    (run_directory / "comparisons" / "index.json").write_text(
+        _json(comparison_index), encoding="utf-8"
+    )
+    retained = _copy_pipeline_evidence(sandbox, run_directory, states)
+    if retained:
+        record = record.model_copy(update={"retained_outputs": retained})
+        write_run_directory(
+            run_directory,
+            record,
+            resolved_config={
+                "profile": profile.name,
+                "baseline_lock": options.baseline_lock,
+                "fixture_set": fixture.fixture_set,
+                "seed": options.seed,
+                "start_at": options.start_at,
+                "through": options.through,
+            },
+        )
+        (run_directory / "comparisons" / "index.json").write_text(
+            _json(comparison_index), encoding="utf-8"
+        )
+    retain_sandbox = options.keep_sandbox == "always" or (
+        options.keep_sandbox == "failure" and not accepted
+    )
+    if retain_sandbox:
+        (run_directory / "sandbox.txt").write_text(str(sandbox.root) + "\n", encoding="utf-8")
+    else:
+        sandbox.cleanup()
+    return run_directory, int(ExitCode.ACCEPTED if accepted else ExitCode.DIFFERENCE)

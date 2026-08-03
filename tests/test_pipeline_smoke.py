@@ -18,12 +18,20 @@ from moseq2_test.suites.pipeline_smoke import (
 
 def test_profile_preserves_all_28_compact_pipeline_steps() -> None:
     selected = profile("pipeline-smoke", require_implemented=False)
-    assert selected.implemented is False
+    assert selected.implemented is True
     assert len(selected.steps) == 28
     assert selected.steps[0].id == "prepare-compact-real-data-project"
     assert selected.steps[-1].id == "run-2-app-noninteractive-smoke"
     assert selected.steps[1].expected_failure == "pipeline-pristine-good-timestamp-mismatch"
     assert "selected-recordings--good-session-tar-gz" in selected.steps[0].fixtures
+    by_id = {step.id: step for step in selected.steps}
+    assert by_id["run-2-pristine-good-session-timestamp-qc"].depends_on == [
+        "prepare-compact-real-data-project"
+    ]
+    assert set(by_id["run-2-reference-model-apply"].depends_on) == {
+        "run-2-model-train-smoke",
+        "run-1-model-train-smoke",
+    }
 
 
 def test_compatible_recording_truncates_timestamps_to_depth_frames(tmp_path: Path) -> None:

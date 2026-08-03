@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +50,13 @@ class Sandbox:
         resolved = self.root.resolve()
         if resolved == Path(resolved.anchor) or not resolved.name.startswith("moseq2-test-"):
             raise InvalidConfiguration(f"refusing unsafe sandbox cleanup: {resolved}")
+        # Staged inputs are deliberately read-only. Unlinking their contents
+        # requires write permission on their parent directories, but not on the
+        # fixture files themselves (which may be hard-linked to the cache).
+        directories = [resolved, *(path for path in resolved.rglob("*") if path.is_dir())]
+        for directory in directories:
+            mode = stat.S_IMODE(directory.stat().st_mode)
+            directory.chmod(mode | stat.S_IWUSR | stat.S_IXUSR)
         shutil.rmtree(resolved)
 
 

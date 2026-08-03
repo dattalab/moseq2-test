@@ -4,5 +4,4 @@ kind: trusted-model
 rtol: 1.0e-7
 atol: 1.0e-8
 ignore:
-  - /structure/values/(training_seconds|created_at|output_path)$
-
+  - /structure/values/(training_seconds|created_at|output_path|pc_score_path)$

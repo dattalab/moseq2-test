@@ -14,6 +14,7 @@ import site
 import subprocess
 import sys
 import traceback
+from collections import Counter
 from pathlib import Path
 
 PROTOCOL_VERSION = 1
@@ -264,6 +265,58 @@ def operation_pickle_manifest(parameters):
     return {"kind": "pickle", "structure": summarize_pickle_value(value)}
 
 
+def operation_model_analysis(parameters):
+    if parameters.get("trusted") is not True:
+        raise ValueError("model-analysis requires trusted=true")
+    import h5py
+    import joblib
+    import numpy as np
+
+    model = joblib.load(parameters["path"])
+    labels = [np.asarray(value) for value in model.get("labels", [])]
+    keys = [str(value) for value in model.get("keys", [])]
+    usage = Counter()
+    for label in labels:
+        usage.update(int(value) for value in label.tolist() if int(value) >= 0)
+    specific_syllable = max(usage.items(), key=lambda item: item[1])[0] if usage else None
+    result = {
+        "summary": {"kind": "pickle", "structure": summarize_pickle_value(model)},
+        "specific_syllable": specific_syllable,
+    }
+    score_path = parameters.get("score_path")
+    if score_path is not None:
+        with h5py.File(score_path, "r") as scores:
+            expected_lengths = {
+                str(key): int(dataset.shape[0]) for key, dataset in scores["scores"].items()
+            }
+        # ``strict=`` is unavailable in the worker's required Python 3.7 runtime.
+        lengths = {key: len(label) for key, label in zip(keys, labels)}  # noqa: B905
+        checks = {
+            "four_sessions": len(keys) == 4 and len(labels) == 4,
+            "all_score_uuids_present": set(keys) == set(expected_lengths),
+            "label_lengths_match_scores": lengths == expected_lengths,
+            "labels_are_finite_integers": all(
+                np.issubdtype(label.dtype, np.integer) and np.isfinite(label).all()
+                for label in labels
+            ),
+            "model_object_saved": model.get("model") is not None,
+            "whitening_parameters_saved": bool(model.get("whitening_parameters")),
+            "loglikes_recorded": (
+                np.size(model.get("loglikes", [])) >= 1 and len(model.get("train_ll", [])) >= 2
+            ),
+        }
+        result["invariants"] = {
+            "passed": all(checks.values()),
+            "checks": checks,
+            "keys": keys,
+            "label_lengths": lengths,
+            "expected_lengths": expected_lengths,
+            "label_minimum": min(int(label.min()) for label in labels) if labels else None,
+            "label_maximum": max(int(label.max()) for label in labels) if labels else None,
+        }
+    return result
+
+
 def operation_compiled_smoke(parameters):
     del parameters
     checks = []
@@ -407,6 +460,7 @@ OPERATIONS = {
     "seeded-cli": operation_seeded_cli,
     "inspect-installation": operation_inspect_installation,
     "pickle-manifest": operation_pickle_manifest,
+    "model-analysis": operation_model_analysis,
     "compiled-smoke": operation_compiled_smoke,
     "app-smoke": operation_app_smoke,
 }

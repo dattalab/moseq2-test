@@ -43,3 +43,20 @@ def test_staged_inputs_are_read_only_and_detect_mutation(tmp_path: Path) -> None
     (staged / "value.txt").write_text("changed")
     with pytest.raises(InvalidConfiguration):
         assert_unchanged(staged, before)
+
+
+def test_cleanup_removes_read_only_directories_without_changing_file_mode(tmp_path: Path) -> None:
+    cached = tmp_path / "cached-object"
+    cached.write_text("immutable")
+    cached.chmod(0o444)
+    sandbox = Sandbox.create(tmp_path / "workspace")
+    staged = sandbox.inputs / "fixture"
+    staged.mkdir()
+    fixture = staged / "value.txt"
+    fixture.hardlink_to(cached)
+    staged.chmod(0o555)
+    sandbox.inputs.chmod(0o555)
+    sandbox.cleanup()
+    assert not sandbox.root.exists()
+    assert cached.read_text() == "immutable"
+    assert cached.stat().st_mode & 0o777 == 0o444

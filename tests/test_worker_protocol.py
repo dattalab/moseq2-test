@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import pickle
 import subprocess
 import sys
 from pathlib import Path
 
+import h5py
+import numpy as np
 import pytest
 
 from moseq2_test.errors import InvalidConfiguration, Moseq2TestError
 from moseq2_test.execution.container import container_command
 from moseq2_test.execution.process import execute_worker
 from moseq2_test.execution.protocol import WorkerRequest
+from moseq2_test.workers.legacy_worker import operation_model_analysis
 
 
 def test_probe_round_trip_uses_json_protocol(tmp_path: Path) -> None:
@@ -77,3 +81,57 @@ def test_seeded_cli_returns_structured_failure_and_uses_requested_cwd(tmp_path: 
     assert response.result["returncode"] == 1
     assert response.result["exception"] == "ValueError"
     assert response.result["message"] == f"worker cwd: {run_root}"
+
+
+def test_model_analysis_checks_bounded_training_invariants(tmp_path: Path) -> None:
+    legacy_python = Path(
+        "/n/groups/datta/john/projects/user-support/2026-08-02-moseq2-modernization/"
+        "environments/2026-08-02_moseq2_modernization/legacy_py37/bin/python"
+    )
+    if not legacy_python.is_file():
+        pytest.skip("sealed Python 3.7 interpreter is unavailable")
+    keys = [f"session-{index}" for index in range(4)]
+    labels = [[index, 1, 1] for index in range(4)]
+    model_path = tmp_path / "model.p"
+    with model_path.open("wb") as stream:
+        pickle.dump(
+            {
+                "keys": keys,
+                "labels": labels,
+                "model": "saved",
+                "whitening_parameters": {"mean": [0.0]},
+                "loglikes": [1.0],
+                "train_ll": [1.0, 2.0],
+            },
+            stream,
+            protocol=4,
+        )
+    score_path = tmp_path / "scores.h5"
+    with h5py.File(score_path, "w") as handle:
+        scores = handle.create_group("scores")
+        for key in keys:
+            scores.create_dataset(key, data=np.zeros((3, 2)))
+    response = execute_worker(
+        legacy_python,
+        WorkerRequest(
+            request_id="model-analysis",
+            operation="model-analysis",
+            parameters={
+                "trusted": True,
+                "path": str(model_path),
+                "score_path": str(score_path),
+            },
+        ),
+        work=tmp_path / "worker",
+        timeout=30,
+    )
+    assert response.result is not None
+    result = response.result
+    assert result["invariants"]["passed"] is True
+    assert result["specific_syllable"] == 1
+    assert result["summary"]["kind"] == "pickle"
+
+
+def test_model_analysis_rejects_untrusted_pickle(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="trusted=true"):
+        operation_model_analysis({"path": str(tmp_path / "model.p")})
