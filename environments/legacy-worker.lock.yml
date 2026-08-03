@@ -6,23 +6,30 @@ source_commit: c8ef29c35cea74e6333491140766c5938312e625
 source_tree: 2301824c8f0ddc7cece1faf62183c31bdb2c1b6c
 publication:
   tag: sha-c8ef29c35cea74e6333491140766c5938312e625
-  workflow_run_id: 30842020289
-  workflow_url: https://github.com/dattalab/moseq2-test/actions/runs/30842020289
+  workflow_run_id: 30844424436
+  workflow_url: https://github.com/dattalab/moseq2-test/actions/runs/30844424436
   artifact_name: legacy-worker-publication-c8ef29c35cea74e6333491140766c5938312e625
   visibility: public
   anonymous_access_verified_at: "2026-08-03T19:05:28Z"
   anonymous_registry_digest: sha256:01376ca7047fad6510ef2d80ba85faccdc56be986fe4e262b8276959494f1091
 certification:
-  id: 20260803T184457Z-cert-bf755e1a
+  id: 20260803T191147Z-cert-653d2dc9
   status: accepted
   requirements_passed: 25
   requirements_total: 25
-  wall_seconds: 315.2298108429999
-  peak_controller_tree_rss_bytes: 3432833024
+  wall_seconds: 291.77583585099995
+  peak_controller_tree_rss_bytes: 3798626304
   peak_workspace_bytes: 460307325
   downloaded_object_bytes: 604993456
 evidence:
   context_manifest_sha256: e5de0f1b99354026e05c902f4712ea45e6d33d1412885553156799c6c0b167f7
-  sbom_spdx_json_sha256: d24e4f84f71f88ac26d4dde6d3bdad93e00f37be18d9de3cf484c6ee3eb35b04
-  grype_json_sha256: 1540ec4cac9d9c1ccb30b80a5e5eff954dfb0bb0202205a1ef82a89c6ed83be2
-  certification_json_sha256: 9c8688edc03959268178f0aa685bafb21d3c80271f2c25318b0e5e86074457b6
+  sbom_spdx_json_sha256: 412251b97d1ce229b4e386c66cc491474874df5278ac68d910ed91ca4eda8940
+  grype_json_sha256: b24a8669d85b50b8d42365f06a8316e726d0e68973f35456101f890dd888a069
+  certification_json_sha256: 9eb68ce039f78aafd449d8ddbaac3e0ef6469fcc48d36b191febeb5025f7cc32
+attestation:
+  predicate_type: https://slsa.dev/provenance/v1
+  subject_digest: sha256:01376ca7047fad6510ef2d80ba85faccdc56be986fe4e262b8276959494f1091
+  workflow_source_commit: 559b0eb4ae94a4ddb57aafacd98464b6168b8828
+  runner_environment: github-hosted
+  transparency_log: https://rekor.sigstore.dev
+  verified_at: "2026-08-03T19:18:16Z"

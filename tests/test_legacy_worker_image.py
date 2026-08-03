@@ -125,6 +125,12 @@ def test_published_worker_lock_is_immutable_and_auditable() -> None:
     assert isinstance(publication, dict)
     assert publication["visibility"] == "public"
     assert publication["anonymous_registry_digest"] == lock["digest"]
+    attestation = lock["attestation"]
+    assert isinstance(attestation, dict)
+    assert attestation["predicate_type"] == "https://slsa.dev/provenance/v1"
+    assert attestation["subject_digest"] == lock["digest"]
+    assert attestation["runner_environment"] == "github-hosted"
+    assert re.fullmatch(r"[0-9a-f]{40}", str(attestation["workflow_source_commit"]))
     evidence = lock["evidence"]
     assert isinstance(evidence, dict)
     for key, value in evidence.items():
