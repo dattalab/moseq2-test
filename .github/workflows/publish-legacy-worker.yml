@@ -99,16 +99,23 @@ jobs:
           git -C "$candidate_source" config user.email "moseq2-test@invalid.example"
           git -C "$candidate_source" add .
           git -C "$candidate_source" commit -m "synthetic candidate"
-          docker run --rm \
-            --env MOSEQ2_TEST_SAFE_GIT_DIRECTORY=/source \
-            --mount "type=bind,source=$candidate_source,target=/source,readonly" \
-            --mount "type=bind,source=$candidate_output,target=/candidate" \
-            --mount "type=bind,source=$candidate_workspace,target=/workspace" \
-            "$IMAGE_TAG" \
-            --workspace /workspace \
-            --output-dir /candidate \
-            --target-python /opt/moseq2/legacy/bin/python \
-            candidates build --source moseq2-extract=/source
+          if ! docker run --rm \
+              --env MOSEQ2_TEST_SAFE_GIT_DIRECTORY=/source \
+              --mount "type=bind,source=$candidate_source,target=/source,readonly" \
+              --mount "type=bind,source=$candidate_output,target=/candidate" \
+              --mount "type=bind,source=$candidate_workspace,target=/workspace" \
+              "$IMAGE_TAG" \
+              --workspace /workspace \
+              --output-dir /candidate \
+              --target-python /opt/moseq2/legacy/bin/python \
+              candidates build --source moseq2-extract=/source; then
+            for log in "$candidate_output"/candidate-build/logs/*.log; do
+              echo "::group::$(basename "$log")"
+              sed -n '1,400p' "$log"
+              echo "::endgroup::"
+            done
+            exit 1
+          fi
           test -s "$candidate_output/candidate-build/candidates.json"
           candidate_wheel=$(find "$candidate_output/candidate-build" -maxdepth 1 \
             -type f -name 'moseq2_extract-*.whl' -print -quit)
@@ -233,5 +240,6 @@ jobs:
             legacy-worker.grype.json
             legacy-worker-publication.json
             build/worker-inputs/context-manifest.json
+            ${{ runner.temp }}/candidate-output/
           if-no-files-found: error
           retention-days: 30
