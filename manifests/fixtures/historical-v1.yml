@@ -22,6 +22,23 @@ objects:
   license_id: moseq-noncommercial-research
   citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
   source: https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl
+- id: classifiers--flip-classifier-k2-largemicewithfiber-pkl
+  kind: trusted-pickle
+  filename: flip_classifier_k2_largemicewithfiber.pkl
+  size: 11907703
+  sha256: d7ba4830233ff921c0f173fc6a7dd3e5dbc3ad79fa2aec7095b2e183adde6556
+  canonical_urls:
+  - https://moseq-data.s3.amazonaws.com/moseq2-test/v1/objects/sha256/d7/d7ba4830233ff921c0f173fc6a7dd3e5dbc3ad79fa2aec7095b2e183adde6556/flip_classifier_k2_largemicewithfiber.pkl
+  provenance_urls:
+  - https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl
+  publication_status: approved-by-project-owner
+  trust: trusted-baseline
+  unpack: none
+  profiles:
+  - historical-regression
+  license_id: moseq-noncommercial-research
+  citation: MoSeq2 Datta Lab baseline fixtures; see NOTICE.md and manifest provenance
+  source: https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl
 - id: historical-fixtures--moseq2-app-zip
   kind: archive
   filename: moseq2-app.zip

@@ -41,6 +41,15 @@ extraction rejects traversal, links, special files, and declared size/member
 ceilings. Expanded inputs are read-only. Each build, installation, historical
 test snapshot, pipeline run, and result directory has a distinct root.
 
+Two sealed `moseq2-extract` tests exercise its historical classifier-download
+entry points. Before that suite starts, the controller maps only the two exact
+legacy HTTPS URLs to their separately declared and verified cache objects. A
+Python-3.7-compatible `sitecustomize` adapter copies the exact bytes with the
+normal `urlretrieve` interface; it rejects any undeclared URL. The mapping,
+object IDs, sizes, hashes, and adapter hash are retained in run provenance.
+This preserves the package-owned test content while keeping target execution
+network-disabled.
+
 ## Reports
 
 `run.json` is canonical. Markdown and JUnit are deterministic projections and

@@ -20,7 +20,7 @@ def test_all_built_in_manifests_validate() -> None:
     assert len(profiles()) == 4
     assert len(source_lock("moseq2-baseline-v1").sources) == 8
     assert len(wheel_lock("moseq2-baseline-linux-py37-v1").wheels) == 8
-    assert len(fixture_manifest("historical-v1").objects) == 6
+    assert len(fixture_manifest("historical-v1").objects) == 7
     assert len(fixture_manifest("pipeline-smoke-v1").objects) == 20
     assert len(known_failures().failures) == 12
 

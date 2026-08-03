@@ -1,10 +1,11 @@
 {
-  "bytes": 604993456,
+  "bytes": 616901159,
   "fixture_sets": {
-    "historical-v1": 6,
+    "historical-v1": 7,
     "pipeline-smoke-v1": 20
   },
-  "objects": 25,
+  "objects": 26,
   "schema_version": 1,
-  "source_checksum_table": "tables/2026-08-02_moseq2_modernization/test_input_sha256.tsv"
+  "source_checksum_table": "tables/2026-08-02_moseq2_modernization/test_input_sha256.tsv",
+  "supplemental_checksum_table": "tables/2026-08-03_moseq2_test_implementation/discovered_historical_download_inputs.tsv"
 }

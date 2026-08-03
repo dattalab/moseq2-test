@@ -106,4 +106,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 packages = ["moseq2_test"]
-exclude = ["src/moseq2_test/workers/legacy_worker.py"]
+exclude = [
+  "src/moseq2_test/workers/legacy_worker.py",
+  "src/moseq2_test/workers/offline_urlretrieve.py",
+]

@@ -9,6 +9,7 @@ import tarfile
 import time
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
+from importlib.resources import as_file, files
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -76,6 +77,20 @@ TEST_TOOL_REQUIREMENTS = (
     "pluggy==0.13.1",
     "more-itertools==8.14.0",
 )
+OFFLINE_URL_FIXTURES = {
+    "moseq2-extract": (
+        (
+            "https://storage.googleapis.com/flip-classifiers/"
+            "flip_classifier_k2_largemicewithfiber.pkl",
+            "classifiers--flip-classifier-k2-largemicewithfiber-pkl",
+        ),
+        (
+            "https://storage.googleapis.com/flip-classifiers/"
+            "flip_classifier_k2_c57_10to13weeks.pkl",
+            "classifiers--flip-classifier-k2-c57-10to13weeks-pkl",
+        ),
+    )
+}
 
 
 def _parse_junit(path: Path) -> dict[str, int | float | bool]:
@@ -280,6 +295,47 @@ def _stage_fixture(package: str, destination: Path, cache_dir: Path) -> None:
     _make_mutable(data)
 
 
+def _offline_url_environment(
+    package: str, sandbox: Sandbox, cache_dir: Path
+) -> tuple[dict[str, str], dict[str, Any] | None]:
+    """Stage an exact-URL adapter for package tests with historical downloads."""
+    declarations = OFFLINE_URL_FIXTURES.get(package)
+    if declarations is None:
+        return {}, None
+    manifest = fixture_manifest("historical-v1")
+    by_id = {item.id: item for item in manifest.objects}
+    mappings: dict[str, dict[str, str | int]] = {}
+    evidence: list[dict[str, str | int]] = []
+    for url, object_id in declarations:
+        try:
+            item = by_id[object_id]
+        except KeyError as error:
+            raise MissingInput(f"historical fixture manifest has no {object_id}") from error
+        source = CacheLayout(cache_dir).object_path(item.sha256)
+        verify_object(source, item)
+        mappings[url] = {
+            "source": str(source),
+            "size": item.size,
+            "sha256": item.sha256,
+        }
+        evidence.append(
+            {"url": url, "fixture_id": item.id, "size": item.size, "sha256": item.sha256}
+        )
+    shim_directory = sandbox.work / "offline-urlretrieve" / package
+    shim_directory.mkdir(parents=True)
+    shim = shim_directory / "sitecustomize.py"
+    resource = files("moseq2_test.workers").joinpath("offline_urlretrieve.py")
+    with as_file(resource) as resource_path:
+        shutil.copy2(resource_path, shim)
+    return (
+        {
+            "PYTHONPATH": str(shim_directory),
+            "MOSEQ2_TEST_OFFLINE_URL_MAP": _json(mappings).strip(),
+        },
+        {"adapter_sha256": sha256_file(shim), "mappings": evidence},
+    )
+
+
 def _prepare_test_tree(
     package: str,
     source: SourceRecord,
@@ -386,6 +442,9 @@ def _run_suite(
     junit = sandbox.result / f"{package}.xml"
     command = _test_command(step, target_python, junit)
     started = time.monotonic()
+    unset_environment = ["DISPLAY", "PYTHONHOME"]
+    if "PYTHONPATH" not in environment:
+        unset_environment.append("PYTHONPATH")
     response = execute_worker(
         target_python,
         WorkerRequest(
@@ -395,7 +454,7 @@ def _run_suite(
                 "command": command,
                 "cwd": str(test_tree),
                 "environment": environment,
-                "unset_environment": ["DISPLAY", "PYTHONPATH", "PYTHONHOME"],
+                "unset_environment": unset_environment,
                 "timeout": timeout,
             },
         ),
@@ -612,7 +671,13 @@ def run_historical_regression(options: Any, profile: SuiteProfile) -> tuple[Path
                 offline=options.offline,
                 allow_dirty=options.allow_dirty_source,
             )
+            offline_environment, offline_evidence = _offline_url_environment(
+                package, sandbox, options.cache_dir
+            )
+            if offline_evidence is not None:
+                staged["offline_url_fixtures"] = offline_evidence
             source_provenance[package] = staged
+            suite_environment = {**test_environment, **offline_environment}
             result, junit_summary, classifications = _run_suite(
                 package,
                 step,
@@ -620,7 +685,7 @@ def run_historical_regression(options: Any, profile: SuiteProfile) -> tuple[Path
                 test_tree=test_tree,
                 sandbox=sandbox,
                 timeout=timeout,
-                environment=test_environment,
+                environment=suite_environment,
                 baseline_commits=baseline_commits,
             )
             commands.append(result)

@@ -29,6 +29,7 @@ steps:
     command: [python, -m, pytest]
     fixtures:
       - historical-fixtures--moseq2-extract-zip
+      - classifiers--flip-classifier-k2-largemicewithfiber-pkl
       - classifiers--flip-classifier-k2-c57-10to13weeks-pkl
   - id: historical-tests-moseq2-pca
     package: moseq2-pca

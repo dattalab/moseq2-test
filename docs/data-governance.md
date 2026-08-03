@@ -26,6 +26,13 @@ Trusted pickle objects may be deserialized only inside the isolated legacy
 worker after their manifest trust class and hash are verified. The controller
 must not deserialize them.
 
+Historical tests that call an external download API receive only exact-URL
+mappings declared by the suite. Each mapped response is a separately listed
+fixture whose source and copied destination are verified by size and SHA-256.
+This is a test transport adapter, not a classifier substitution: the index-0
+large-mice classifier and index-1 C57 classifier retain their distinct original
+bytes. Unmapped URLs fail rather than falling through to the network.
+
 ## Publishing or adding data
 
 1. Confirm project-owner publication approval, terms, provenance, license,
