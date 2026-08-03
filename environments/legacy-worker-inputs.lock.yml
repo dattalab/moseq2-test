@@ -155,6 +155,13 @@ objects:
   sha256: d56fbad95abf993f8af608484729e3d87ef611dd85b3380a8bad1d5cbc373a57
   canonical_url: https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
   local_source: external_sources/eigen-3.3.7.tar.gz
+- id: external-source--git-2.43.0
+  kind: external-source
+  filename: git-2.43.0.tar.gz
+  size: 10952198
+  sha256: ed238f5c72a014f238cc49fe7df4c6883732a3881111b381c105e2c5be77302f
+  canonical_url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.43.0.tar.gz
+  local_source: external_sources/git-2.43.0.tar.gz
 - id: sdist--moseq2-app
   kind: sdist
   filename: moseq2-app-1.3.1.tar.gz

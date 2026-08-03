@@ -24,7 +24,7 @@ def load(name: str) -> dict[str, object]:
         (
             "legacy-container-runtime-linux-64.lock.yml",
             "legacy-container-runtime-linux-64.explicit.txt",
-            13,
+            14,
         ),
     ],
 )
@@ -78,7 +78,7 @@ def test_worker_input_lock_is_complete_and_content_addressed() -> None:
     assert kinds == {
         "baseline-wheel": 8,
         "custom-wheel": 9,
-        "external-source": 1,
+        "external-source": 2,
         "sdist": 8,
         "source-archive": 8,
         "test-tool-wheel": 6,
@@ -104,6 +104,8 @@ def test_entrypoint_builds_and_installs_the_pinned_action_checkout_offline() -> 
     assert "uv build --offline --wheel" in entrypoint
     assert "uv pip install --offline --reinstall --no-deps" in entrypoint
     assert "MOSEQ2_TEST_ACTION_ROOT" in entrypoint
+    assert "MOSEQ2_TEST_SAFE_GIT_DIRECTORY" in entrypoint
+    assert "/opt/moseq2/legacy/bin/git config" in entrypoint
 
 
 def test_docker_context_includes_only_the_generated_worker_inputs_under_build() -> None:

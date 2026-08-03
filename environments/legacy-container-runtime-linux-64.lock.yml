@@ -1,9 +1,14 @@
 schema_version: 1
 lock_id: moseq2-legacy-container-runtime-linux-64-v1
 platform: linux-64
-purpose: Container-only shared libraries that the captured O2 environment obtained from its host OS; no
-  captured Conda package is replaced
+purpose: Container-only shared libraries that the captured O2 environment obtained from its host OS plus
+  the Git client used to export candidate worktrees; no captured Conda package is replaced
 packages:
+- url: https://conda.anaconda.org/conda-forge/linux-64/git-2.43.0-pl5321h709897a_1.conda
+  filename: git-2.43.0-pl5321h709897a_1.conda
+  size: 9900416
+  sha256: aee301a5102b80eea9f7227f9d0a019e68eee3043fbebee249de9e45769aa7b1
+  md5: 8dc1c1caa5e3fbef59317f5bfe2fd11f
 - url: https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.42.2-h5347b49_0.conda
   filename: libuuid-2.42.2-h5347b49_0.conda
   size: 40017

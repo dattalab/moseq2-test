@@ -6,3 +6,10 @@ sources:
     url: https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
     size: 2133662
     sha256: d56fbad95abf993f8af608484729e3d87ef611dd85b3380a8bad1d5cbc373a57
+  - id: git-2.43.0
+    name: Git 2.43.0 corresponding source
+    filename: git-2.43.0.tar.gz
+    url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.43.0.tar.gz
+    size: 10952198
+    sha256: ed238f5c72a014f238cc49fe7df4c6883732a3881111b381c105e2c5be77302f
+    recipe: https://github.com/conda-forge/git-feedstock/tree/e8101698475ea5a34d0bb5cfa116711c3cfd0734

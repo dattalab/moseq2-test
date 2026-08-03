@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -n "${MOSEQ2_TEST_SAFE_GIT_DIRECTORY:-}" ]]; then
+  case "$MOSEQ2_TEST_SAFE_GIT_DIRECTORY" in
+    /*) ;;
+    *) echo "safe Git directory must be absolute" >&2; exit 2 ;;
+  esac
+  /opt/moseq2/legacy/bin/git config --global --add safe.directory \
+    "$MOSEQ2_TEST_SAFE_GIT_DIRECTORY"
+fi
+
 action_root=${MOSEQ2_TEST_ACTION_ROOT:-/opt/moseq2/framework-source}
 if [[ ! -f "$action_root/pyproject.toml" ]] || [[ ! -f "$action_root/uv.lock" ]]; then
   echo "moseq2-test action source is incomplete: $action_root" >&2

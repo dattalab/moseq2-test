@@ -51,6 +51,7 @@ def test_public_workflows_have_read_only_permissions_and_no_privileged_trigger()
                 "packages": "write",
                 "id-token": "write",
                 "attestations": "write",
+                "artifact-metadata": "write",
             }
             assert "  pull_request:" not in text
             assert "environment: legacy-worker-release" in text

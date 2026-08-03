@@ -11,6 +11,7 @@ permissions:
   packages: write
   id-token: write
   attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: publish-legacy-worker
@@ -71,6 +72,31 @@ jobs:
             --output-dir /tmp/results \
             --target-python /opt/moseq2/legacy/bin/python \
             run install-smoke --keep-sandbox never
+      - name: Verify candidate source export and legacy wheel build
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_source="$RUNNER_TEMP/candidate-source"
+          candidate_output="$RUNNER_TEMP/candidate-output"
+          candidate_workspace="$RUNNER_TEMP/candidate-workspace"
+          cp -a tests/fixtures/synthetic-candidate "$candidate_source"
+          mkdir -p "$candidate_output" "$candidate_workspace"
+          git -C "$candidate_source" init --initial-branch=main
+          git -C "$candidate_source" config user.name "moseq2-test CI"
+          git -C "$candidate_source" config user.email "moseq2-test@invalid.example"
+          git -C "$candidate_source" add .
+          git -C "$candidate_source" commit -m "synthetic candidate"
+          docker run --rm \
+            --env MOSEQ2_TEST_SAFE_GIT_DIRECTORY=/source \
+            --mount "type=bind,source=$candidate_source,target=/source,readonly" \
+            --mount "type=bind,source=$candidate_output,target=/candidate" \
+            --mount "type=bind,source=$candidate_workspace,target=/workspace" \
+            "$IMAGE_TAG" \
+            --workspace /workspace \
+            --output-dir /candidate \
+            --target-python /opt/moseq2/legacy/bin/python \
+            candidates build --source moseq2-extract=/source
+          test -s "$candidate_output/candidate-build/candidates.json"
       - name: Generate SPDX JSON software bill of materials
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
@@ -135,6 +161,50 @@ jobs:
           Path("legacy-worker-publication.json").write_text(
               json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
           )
+          PY
+      - name: Make the linked GHCR package anonymously readable
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          response=$(curl --fail-with-body --silent --show-error \
+            --request PATCH \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/orgs/dattalab/packages/container/moseq2-test-legacy-worker \
+            --data '{"visibility":"public"}')
+          python -c 'import json,sys; assert json.load(sys.stdin)["visibility"] == "public"' \
+            <<<"$response"
+      - name: Verify anonymous digest-pinned registry access
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repository = "dattalab/moseq2-test-legacy-worker"
+          token_url = (
+              "https://ghcr.io/token?service=ghcr.io&scope="
+              f"repository:{repository}:pull"
+          )
+          with urllib.request.urlopen(token_url, timeout=60) as response:
+              token = json.load(response)["token"]
+          request = urllib.request.Request(
+              f"https://ghcr.io/v2/{repository}/manifests/{os.environ['IMAGE_DIGEST']}",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/vnd.docker.distribution.manifest.v2+json",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=60) as response:
+              assert response.status == 200
+              assert response.headers["Docker-Content-Digest"] == os.environ["IMAGE_DIGEST"]
           PY
       - name: Create GitHub and registry build-provenance attestation
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1

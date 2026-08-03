@@ -38,6 +38,7 @@ RUN micromamba create --yes --offline --prefix /opt/moseq2/legacy \
     && /opt/moseq2/legacy/bin/python -m pip install --no-index --no-deps --require-hashes \
       --requirement /tmp/worker-inputs/baseline-wheels-local.requirements.txt \
     && /opt/moseq2/legacy/bin/python -m pip check \
+    && /opt/moseq2/legacy/bin/git --version \
     && mkdir -p /opt/moseq2/source_archives /opt/moseq2/sdists /opt/moseq2/wheels \
       /opt/moseq2/external_sources /opt/moseq2/test_tool_wheels /usr/share/moseq2-test \
     && cp -a /tmp/worker-inputs/source_archives/. /opt/moseq2/source_archives/ \

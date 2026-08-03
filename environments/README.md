@@ -14,13 +14,15 @@ The worker supply chain is split into independently reviewable locks:
 - `legacy-conda-linux-64.lock.yml` preserves the 55-package Chunk 0 Conda
   export with SHA-256 and MD5 for each exact artifact.
 - `legacy-container-runtime-linux-64.lock.yml` adds 13 container-only X11/GLib
-  libraries that the O2 process environment obtained from its host. It does
-  not replace any captured Conda package.
+  libraries that the O2 process environment obtained from its host plus one
+  Git client used to export candidate worktrees. It does not replace any
+  captured Conda package.
 - `legacy-pip-py37-linux-x86-64.lock.yml` records all 125 non-MoSeq pip
   distributions. Nine releases available only as source archives are retained
   as hash-locked wheels together with their corresponding-source identities.
 - `legacy-test-tools.lock.yml`, `external-sources.lock.yml`, and the baseline
-  wheel lock identify the historical runner, Eigen, and eight target packages.
+  wheel lock identify the historical runner, Eigen, Git corresponding source,
+  and eight target packages.
 - `legacy-worker-base-images.lock.yml` pins all three build stages by OCI index
   and linux/amd64 manifest digest.
 - `legacy-worker-inputs.lock.yml` is the notice/provenance and public-object
