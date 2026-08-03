@@ -11,8 +11,7 @@ on:
       - "environments/legacy-worker.lock.yml"
       - "manifests/**"
       - "profiles/**"
-      - "src/moseq2_test/certification.py"
-      - "src/moseq2_test/suites/**"
+      - "src/moseq2_test/**"
       - ".github/workflows/baseline-certification.yml"
 
 permissions:
