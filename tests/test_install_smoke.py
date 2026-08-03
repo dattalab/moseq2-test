@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from moseq2_test.models import CandidateKind, CandidateRecord
 from moseq2_test.registry import profile
 from moseq2_test.suites.install_smoke import (
     _cli_result,
     _inspection_results,
+    _install_records,
     _selected_ids,
 )
 from moseq2_test.workers.legacy_worker import operation_compiled_smoke
@@ -31,6 +33,32 @@ def test_profile_preserves_the_exact_47_historical_check_names() -> None:
     assert len(identifiers) == 47
     assert identifiers[0] == "python-version"
     assert identifiers[-1] == "compiled-operation-autoregressive"
+
+
+def test_install_records_materialize_the_complete_resolved_stack(tmp_path: Path) -> None:
+    wheel_root = tmp_path / "wheelhouse"
+    baseline = CandidateRecord(
+        package="moseq2-pca",
+        kind=CandidateKind.WHEEL,
+        location="wheelhouse/moseq2_pca-1.0-py3-none-any.whl",
+        sha256="a" * 64,
+    )
+    candidate_path = tmp_path / "candidate" / "moseq2_extract-1.0-py3-none-any.whl"
+    candidate = CandidateRecord(
+        package="moseq2-extract",
+        kind=CandidateKind.WHEEL,
+        location=str(candidate_path),
+        sha256="b" * 64,
+    )
+
+    materialized = _install_records([baseline, candidate], wheel_root=wheel_root)
+
+    assert [item.package for item in materialized] == ["moseq2-pca", "moseq2-extract"]
+    assert Path(materialized[0].location) == (
+        wheel_root / "moseq2_pca-1.0-py3-none-any.whl"
+    ).resolve()
+    assert Path(materialized[1].location) == candidate_path.resolve()
+    assert baseline.location == "wheelhouse/moseq2_pca-1.0-py3-none-any.whl"
 
 
 def test_missing_extension_is_a_named_failure(tmp_path: Path) -> None:

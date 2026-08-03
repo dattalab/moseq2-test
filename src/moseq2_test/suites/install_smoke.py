@@ -288,6 +288,19 @@ def _create_layered_target(
     return python
 
 
+def _install_records(
+    records: list[CandidateRecord], *, wheel_root: Path
+) -> list[CandidateRecord]:
+    """Resolve locked wheel references for installation without changing report identities."""
+    resolved: list[CandidateRecord] = []
+    for record in records:
+        location = Path(record.location)
+        if not location.is_absolute():
+            location = wheel_root / location.name
+        resolved.append(record.model_copy(update={"location": str(location.resolve())}))
+    return resolved
+
+
 def _inspect(
     target_python: Path,
     sandbox: Sandbox,
@@ -524,7 +537,19 @@ def run_install_smoke(options: Any, profile: SuiteProfile) -> tuple[Path, int]:
                 f"candidate set has unknown packages: {sorted(unknown_overrides)}"
             )
 
-        actual_python = _create_layered_target(base_python, sandbox, candidate_records, timeout)
+        # Reinstall the complete resolved stack into the disposable target. A venv
+        # with system site packages can import the locked baseline distributions,
+        # but it does not inherit their console scripts. Installing only the
+        # changed wheel therefore produces a misleading partial environment and
+        # makes unrelated entry-point checks fail. The report keeps the canonical
+        # locked identities above; only these installation records use absolute
+        # wheel paths.
+        installation_records = _install_records(
+            resolved_candidates, wheel_root=roots["wheel"]
+        )
+        actual_python = _create_layered_target(
+            base_python, sandbox, installation_records, timeout, force=True
+        )
         actual_prefix = actual_python.parent.parent.resolve()
         allowed_roots = [actual_prefix, base_prefix]
 
