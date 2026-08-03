@@ -108,6 +108,30 @@ def test_entrypoint_builds_and_installs_the_pinned_action_checkout_offline() -> 
     assert "/opt/moseq2/legacy/bin/git config" in entrypoint
 
 
+def test_published_worker_lock_is_immutable_and_auditable() -> None:
+    lock = load("legacy-worker.lock.yml")
+    assert lock["schema_version"] == 1
+    assert lock["image"] == "ghcr.io/dattalab/moseq2-test-legacy-worker"
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", str(lock["digest"]))
+    assert re.fullmatch(r"[0-9a-f]{40}", str(lock["source_commit"]))
+    assert re.fullmatch(r"[0-9a-f]{40}", str(lock["source_tree"]))
+    assert lock["platform"] == "linux/amd64"
+    certification = lock["certification"]
+    assert isinstance(certification, dict)
+    assert certification["status"] == "accepted"
+    assert certification["requirements_passed"] == 25
+    assert certification["requirements_total"] == 25
+    publication = lock["publication"]
+    assert isinstance(publication, dict)
+    assert publication["visibility"] == "public"
+    assert publication["anonymous_registry_digest"] == lock["digest"]
+    evidence = lock["evidence"]
+    assert isinstance(evidence, dict)
+    for key, value in evidence.items():
+        assert str(key).endswith("_sha256")
+        assert SHA256.fullmatch(str(value))
+
+
 def test_docker_context_includes_only_the_generated_worker_inputs_under_build() -> None:
     patterns = (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
     assert "build" not in patterns

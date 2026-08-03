@@ -1,0 +1,192 @@
+name: Baseline certification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 2"
+  push:
+    branches: [main]
+    paths:
+      - "action.yml"
+      - "environments/legacy-worker.lock.yml"
+      - "manifests/**"
+      - "profiles/**"
+      - "src/moseq2_test/certification.py"
+      - "src/moseq2_test/suites/**"
+      - ".github/workflows/baseline-certification.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: baseline-certification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cold-warm-certification:
+    name: Cold and warm installed-package baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out the certified framework revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve and anonymously pull the reviewed worker digest
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name=$(awk '$1 == "image:" {print $2}' environments/legacy-worker.lock.yml)
+          image_digest=$(awk '$1 == "digest:" {print $2}' environments/legacy-worker.lock.yml)
+          [[ "$image_name" == "ghcr.io/dattalab/moseq2-test-legacy-worker" ]]
+          [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          image_ref="$image_name@$image_digest"
+          docker pull "$image_ref"
+          pulled=$(docker inspect --format='{{index .RepoDigests 0}}' "$image_ref")
+          [[ "$pulled" == "$image_ref" ]]
+          echo "ref=$image_ref" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare isolated certification roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p \
+            "$RUNNER_TEMP/moseq2-test-cache" \
+            "$RUNNER_TEMP/moseq2-test-certification/cold-results" \
+            "$RUNNER_TEMP/moseq2-test-certification/warm-results" \
+            "$RUNNER_TEMP/moseq2-test-cold-workspace" \
+            "$RUNNER_TEMP/moseq2-test-warm-workspace"
+
+      - name: Run a cold complete baseline certification
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --env MOSEQ2_TEST_ACTION_ROOT=/action \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/action,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-cache,target=/cache" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-cold-workspace,target=/workspace" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-certification/cold-results,target=/results" \
+            "$IMAGE" \
+            --cache-dir /cache \
+            --workspace /workspace \
+            --output-dir /results \
+            --target-python /opt/moseq2/legacy/bin/python \
+            baseline certify \
+            --fixture-set historical-v1 \
+            --fixture-set pipeline-smoke-v1
+
+      - name: Run a network-disabled warm complete baseline certification
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          docker run --rm --network none \
+            --env MOSEQ2_TEST_ACTION_ROOT=/action \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/action,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-cache,target=/cache,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-warm-workspace,target=/workspace" \
+            --mount "type=bind,source=$RUNNER_TEMP/moseq2-test-certification/warm-results,target=/results" \
+            "$IMAGE" \
+            --offline \
+            --cache-dir /cache \
+            --workspace /workspace \
+            --output-dir /results \
+            --target-python /opt/moseq2/legacy/bin/python \
+            baseline certify \
+            --fixture-set historical-v1 \
+            --fixture-set pipeline-smoke-v1
+
+      - name: Compare cold and warm canonical run semantics
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/moseq2-test-certification"
+          cold_cert=$(find "$root/cold-results" -mindepth 1 -maxdepth 1 -type d -print -quit)
+          warm_cert=$(find "$root/warm-results" -mindepth 1 -maxdepth 1 -type d -print -quit)
+          test -n "$cold_cert"
+          test -n "$warm_cert"
+          mkdir -p "$root/comparisons"
+          for profile in install-smoke historical-regression pipeline-smoke; do
+            cold_run=$(find "$cold_cert/runs/$profile" -mindepth 1 -maxdepth 1 -type d -print -quit)
+            warm_run=$(find "$warm_cert/runs/$profile" -mindepth 1 -maxdepth 1 -type d -print -quit)
+            test -n "$cold_run"
+            test -n "$warm_run"
+            cold_relative=${cold_run#"$root/cold-results/"}
+            warm_relative=${warm_run#"$root/warm-results/"}
+            docker run --rm --network none \
+              --env MOSEQ2_TEST_ACTION_ROOT=/action \
+              --mount "type=bind,source=$GITHUB_WORKSPACE,target=/action,readonly" \
+              --mount "type=bind,source=$root/cold-results,target=/cold,readonly" \
+              --mount "type=bind,source=$root/warm-results,target=/warm,readonly" \
+              "$IMAGE" \
+              compare run \
+              --expected-run "/cold/$cold_relative" \
+              --actual-run "/warm/$warm_relative" \
+              > "$root/comparisons/$profile.json"
+          done
+
+      - name: Audit certification status and hosted resource ceilings
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/moseq2-test-certification"
+          cold_json=$(find "$root/cold-results" -name certification.json -print -quit)
+          warm_json=$(find "$root/warm-results" -name certification.json -print -quit)
+          python3 - "$cold_json" "$warm_json" "$IMAGE" "$GITHUB_RUN_ID" "$root/summary.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          cold = json.loads(Path(sys.argv[1]).read_text())
+          warm = json.loads(Path(sys.argv[2]).read_text())
+          for label, value in (("cold", cold), ("warm", warm)):
+              assert value["status"] == "accepted", (label, value["status"])
+              assert len(value["requirements"]) == 25
+              assert all(item["status"] == "passed" for item in value["requirements"])
+              footprint = (
+                  value["metrics"]["cache_bytes_after"]
+                  + value["metrics"]["peak_workspace_bytes"]
+                  + value["metrics"]["peak_output_bytes"]
+              )
+              assert footprint <= 10 * 1024**3, (label, footprint)
+          summary = {
+              "schema_version": 1,
+              "workflow_run_id": sys.argv[4],
+              "worker_image": sys.argv[3],
+              "cold": {
+                  "certification_id": cold["certification_id"],
+                  "metrics": cold["metrics"],
+              },
+              "warm": {
+                  "certification_id": warm["certification_id"],
+                  "metrics": warm["metrics"],
+              },
+              "canonical_profiles_equal": [
+                  "install-smoke",
+                  "historical-regression",
+                  "pipeline-smoke",
+              ],
+          }
+          Path(sys.argv[5]).write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+
+      - name: Retain cold/warm reports, comparisons, and metrics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: baseline-certification-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/moseq2-test-certification/
+          if-no-files-found: error
+          retention-days: 30

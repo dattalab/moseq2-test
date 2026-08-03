@@ -2,6 +2,11 @@ name: Publish locked legacy worker
 
 on:
   workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Exact trusted source commit to rebuild; defaults to the workflow revision.
+        required: false
+        type: string
   push:
     tags:
       - "v*"
@@ -25,12 +30,20 @@ jobs:
     environment: legacy-worker-release
     env:
       IMAGE_NAME: ghcr.io/dattalab/moseq2-test-legacy-worker
-      IMAGE_TAG: ghcr.io/dattalab/moseq2-test-legacy-worker:sha-${{ github.sha }}
+      IMAGE_TAG: ghcr.io/dattalab/moseq2-test-legacy-worker:sha-${{ inputs.source_commit || github.sha }}
+      SOURCE_COMMIT: ${{ inputs.source_commit || github.sha }}
     steps:
       - name: Check out the trusted revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.source_commit || github.sha }}
+      - name: Verify the trusted source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_COMMIT" ]]
       - name: Install Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -57,7 +70,7 @@ jobs:
           load: true
           push: false
           tags: ${{ env.IMAGE_TAG }}
-          build-args: SOURCE_COMMIT=${{ github.sha }}
+          build-args: SOURCE_COMMIT=${{ env.SOURCE_COMMIT }}
           cache-from: type=gha,scope=legacy-worker
           cache-to: type=gha,mode=max,scope=legacy-worker
           provenance: false
@@ -155,28 +168,13 @@ jobs:
               "image": os.environ["IMAGE_NAME"],
               "tag": os.environ["IMAGE_TAG"],
               "digest": os.environ["IMAGE_DIGEST"],
-              "source_commit": os.environ["GITHUB_SHA"],
+              "source_commit": os.environ["SOURCE_COMMIT"],
               "workflow_run_id": os.environ["GITHUB_RUN_ID"],
           }
           Path("legacy-worker-publication.json").write_text(
               json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
           )
           PY
-      - name: Make the linked GHCR package anonymously readable
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          response=$(curl --fail-with-body --silent --show-error \
-            --request PATCH \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer $GH_TOKEN" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/orgs/dattalab/packages/container/moseq2-test-legacy-worker \
-            --data '{"visibility":"public"}')
-          python -c 'import json,sys; assert json.load(sys.stdin)["visibility"] == "public"' \
-            <<<"$response"
       - name: Verify anonymous digest-pinned registry access
         shell: bash
         env:
@@ -216,7 +214,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: legacy-worker-publication-${{ github.sha }}
+          name: legacy-worker-publication-${{ env.SOURCE_COMMIT }}
           path: |
             ${{ runner.temp }}/moseq2-test-results/
             legacy-worker.sbom.spdx.json

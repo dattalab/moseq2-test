@@ -7,133 +7,267 @@ inputs:
     description: Canonical MoSeq2 package name.
     required: true
   source:
-    description: Git checkout to export and build; normally github.workspace.
+    description: Clean Git checkout to export and build; normally github.workspace.
     required: true
   tier:
     description: pull-request, install-smoke, historical-regression, pipeline-smoke, or baseline.
     required: false
     default: pull-request
-  target-python:
-    description: Python 3.7 interpreter in the sealed target environment.
-    required: true
   cache-dir:
-    description: Verified fixture-cache directory.
+    description: Verified fixture-cache directory on the hosted runner.
     required: false
     default: ""
   output-dir:
-    description: Durable result directory.
+    description: Durable result directory on the hosted runner.
     required: false
     default: ""
   offline:
-    description: Require pre-populated fixtures and prohibit downloads.
+    description: Require pre-populated fixtures and prohibit fixture downloads.
     required: false
     default: "false"
 
 outputs:
   candidate-set:
-    description: Absolute path to the generated checksummed candidate manifest.
-    value: ${{ steps.candidate.outputs.candidate-set }}
+    description: Host path to the generated checksummed candidate manifest.
+    value: ${{ steps.run.outputs.candidate-set }}
   results:
-    description: Absolute path containing all suite run directories.
+    description: Host path containing all suite run directories.
     value: ${{ steps.run.outputs.results }}
+  worker-image:
+    description: Immutable legacy-worker image identity used by the run.
+    value: ${{ steps.run.outputs.worker-image }}
 
 runs:
   using: composite
   steps:
-    - name: Install controller Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-      with:
-        python-version: "3.12"
-    - name: Install uv without a shared cache
-      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-      with:
-        enable-cache: false
-    - name: Build and install the pinned action checkout
-      shell: bash
-      env:
-        ACTION_ROOT: ${{ github.action_path }}
-        CONTROLLER_ENV: ${{ runner.temp }}/moseq2-test-action-controller
-      run: |
-        set -euo pipefail
-        uv build --wheel --project "$ACTION_ROOT" --out-dir "$RUNNER_TEMP/moseq2-test-action-dist"
-        uv venv "$CONTROLLER_ENV" --python 3.12
-        wheel=$(find "$RUNNER_TEMP/moseq2-test-action-dist" -maxdepth 1 -type f -name 'moseq2_test-*.whl' -print -quit)
-        test -n "$wheel"
-        uv pip install --python "$CONTROLLER_ENV/bin/python" "$wheel"
-        "$CONTROLLER_ENV/bin/moseq2-test" --version
-    - name: Validate untrusted inputs and host capacity
-      shell: bash
-      env:
-        PACKAGE: ${{ inputs.package }}
-        SOURCE: ${{ inputs.source }}
-        TIER: ${{ inputs.tier }}
-        TARGET_PYTHON: ${{ inputs.target-python }}
-        WORKSPACE_ROOT: ${{ runner.temp }}/moseq2-test-workspace
-        CONTROLLER: ${{ runner.temp }}/moseq2-test-action-controller/bin/moseq2-test
-      run: |
-        set -euo pipefail
-        case "$PACKAGE" in
-          moseq2-extract|moseq2-pca|moseq2-model|moseq2-viz|moseq2-app|pyhsmm-autoregressive) ;;
-          *) echo "unsupported DattaLab integration package: $PACKAGE" >&2; exit 2 ;;
-        esac
-        case "$TIER" in
-          pull-request|install-smoke|historical-regression|pipeline-smoke|baseline) ;;
-          *) echo "unsupported test tier: $TIER" >&2; exit 2 ;;
-        esac
-        test -d "$SOURCE"
-        test -x "$TARGET_PYTHON"
-        "$CONTROLLER" --workspace "$WORKSPACE_ROOT" --target-python "$TARGET_PYTHON" doctor --ci
-    - name: Build the pull-request source with target Python
-      id: candidate
-      shell: bash
-      env:
-        PACKAGE: ${{ inputs.package }}
-        SOURCE: ${{ inputs.source }}
-        TARGET_PYTHON: ${{ inputs.target-python }}
-        CONTROLLER: ${{ runner.temp }}/moseq2-test-action-controller/bin/moseq2-test
-        WORKSPACE_ROOT: ${{ runner.temp }}/moseq2-test-workspace
-        CANDIDATE_ROOT: ${{ runner.temp }}/moseq2-test-candidate
-      run: |
-        set -euo pipefail
-        "$CONTROLLER" \
-          --workspace "$WORKSPACE_ROOT" \
-          --output-dir "$CANDIDATE_ROOT" \
-          --target-python "$TARGET_PYTHON" \
-          candidates build --source "$PACKAGE=$SOURCE"
-        manifest="$CANDIDATE_ROOT/candidate-build/candidates.json"
-        "$CONTROLLER" candidates verify --candidate-set "$manifest"
-        echo "candidate-set=$manifest" >> "$GITHUB_OUTPUT"
-    - name: Run the affected installed-package tier
+    - name: Build and test the candidate in the immutable legacy worker
       id: run
       shell: bash
       env:
-        PACKAGE: ${{ inputs.package }}
-        TIER: ${{ inputs.tier }}
-        TARGET_PYTHON: ${{ inputs.target-python }}
-        CACHE_DIR: ${{ inputs.cache-dir }}
-        OUTPUT_DIR: ${{ inputs.output-dir }}
-        OFFLINE: ${{ inputs.offline }}
-        CANDIDATE_SET: ${{ steps.candidate.outputs.candidate-set }}
-        CONTROLLER: ${{ runner.temp }}/moseq2-test-action-controller/bin/moseq2-test
-        WORKSPACE_ROOT: ${{ runner.temp }}/moseq2-test-workspace
+        ACTION_ROOT_INPUT: ${{ github.action_path }}
+        CACHE_INPUT: ${{ inputs.cache-dir }}
+        OFFLINE_INPUT: ${{ inputs.offline }}
+        OUTPUT_INPUT: ${{ inputs.output-dir }}
+        PACKAGE_INPUT: ${{ inputs.package }}
+        SOURCE_INPUT: ${{ inputs.source }}
+        TIER_INPUT: ${{ inputs.tier }}
       run: |
         set -euo pipefail
-        if [ -z "$CACHE_DIR" ]; then CACHE_DIR="$RUNNER_TEMP/moseq2-test-cache"; fi
-        if [ -z "$OUTPUT_DIR" ]; then OUTPUT_DIR="$RUNNER_TEMP/moseq2-test-results"; fi
-        mkdir -p "$OUTPUT_DIR"
-        common=(--cache-dir "$CACHE_DIR" --workspace "$WORKSPACE_ROOT" --output-dir "$OUTPUT_DIR" --target-python "$TARGET_PYTHON" --no-color)
-        if [ "$OFFLINE" = true ]; then common+=(--offline); elif [ "$OFFLINE" != false ]; then echo "offline must be true or false" >&2; exit 2; fi
-        run_profile() {
-          "$CONTROLLER" "${common[@]}" run "$@" --candidate-set "$CANDIDATE_SET" --keep-sandbox failure
+
+        case "$PACKAGE_INPUT" in
+          moseq2-extract|moseq2-pca|moseq2-model|moseq2-viz|moseq2-app|pyhsmm-autoregressive) ;;
+          *) echo "unsupported DattaLab integration package: $PACKAGE_INPUT" >&2; exit 2 ;;
+        esac
+        case "$TIER_INPUT" in
+          pull-request|install-smoke|historical-regression|pipeline-smoke|baseline) ;;
+          *) echo "unsupported test tier: $TIER_INPUT" >&2; exit 2 ;;
+        esac
+        case "$OFFLINE_INPUT" in
+          true|false) ;;
+          *) echo "offline must be true or false" >&2; exit 2 ;;
+        esac
+
+        validate_mount_path() {
+          local name=$1
+          local path=$2
+          if [[ "$path" != /* ]] || [[ "$path" == *","* ]] || [[ "$path" == *$'\n'* ]] || [[ "$path" == *$'\r'* ]]; then
+            echo "$name must be an absolute bind-mount path without commas or newlines: $path" >&2
+            exit 2
+          fi
         }
-        run_profile install-smoke
-        if [ "$TIER" != install-smoke ]; then
-          run_profile historical-regression --package "$PACKAGE"
-        fi
-        if [ "$TIER" = pipeline-smoke ] || [ "$TIER" = baseline ] || [ "$TIER" = pull-request ]; then
-          case "$PACKAGE" in
-            moseq2-extract|moseq2-pca) run_profile pipeline-smoke --through pca ;;
-            *) run_profile pipeline-smoke --start-at model ;;
+
+        ACTION_ROOT=$(realpath -e -- "$ACTION_ROOT_INPUT")
+        SOURCE=$(realpath -e -- "$SOURCE_INPUT")
+        RUNNER_TEMP_ROOT=$(realpath -e -- "$RUNNER_TEMP")
+        git -C "$SOURCE" rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+          echo "source must be a Git checkout or worktree: $SOURCE" >&2
+          exit 2
+        }
+        [[ -f "$ACTION_ROOT/environments/legacy-worker.lock.yml" ]] || {
+          echo "legacy worker lock is missing from the pinned action checkout" >&2
+          exit 2
+        }
+
+        run_key="${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}-${PACKAGE_INPUT}"
+        CACHE_DIR=${CACHE_INPUT:-"$RUNNER_TEMP/moseq2-test-cache"}
+        OUTPUT_DIR=${OUTPUT_INPUT:-"$RUNNER_TEMP/moseq2-test-results-$run_key"}
+        CANDIDATE_ROOT="$RUNNER_TEMP/moseq2-test-candidate-$run_key"
+        WORKSPACE_ROOT="$RUNNER_TEMP/moseq2-test-workspace-$run_key"
+        mkdir -p -- "$CACHE_DIR" "$OUTPUT_DIR" "$CANDIDATE_ROOT" "$WORKSPACE_ROOT"
+        CACHE_DIR=$(realpath -e -- "$CACHE_DIR")
+        OUTPUT_DIR=$(realpath -e -- "$OUTPUT_DIR")
+        CANDIDATE_ROOT=$(realpath -e -- "$CANDIDATE_ROOT")
+        WORKSPACE_ROOT=$(realpath -e -- "$WORKSPACE_ROOT")
+        for pair in \
+          "action root=$ACTION_ROOT" \
+          "source=$SOURCE" \
+          "cache=$CACHE_DIR" \
+          "output=$OUTPUT_DIR" \
+          "candidate=$CANDIDATE_ROOT" \
+          "workspace=$WORKSPACE_ROOT"; do
+          validate_mount_path "${pair%%=*}" "${pair#*=}"
+        done
+        writable_roots=("$CACHE_DIR" "$OUTPUT_DIR" "$CANDIDATE_ROOT" "$WORKSPACE_ROOT")
+        for writable in "${writable_roots[@]}"; do
+          [[ "$writable" != "$RUNNER_TEMP_ROOT" ]] || {
+            echo "runner.temp itself is too broad for a writable test root" >&2
+            exit 2
+          }
+          case "$writable/" in
+            "$RUNNER_TEMP_ROOT/"*) ;;
+            *)
+              echo "writable test roots must remain below runner.temp: $writable" >&2
+              exit 2
+              ;;
           esac
-        fi
+          for readonly in "$SOURCE" "$ACTION_ROOT"; do
+            case "$writable/" in
+              "$readonly/"*)
+                echo "writable test roots may not be inside a read-only checkout: $writable" >&2
+                exit 2
+                ;;
+            esac
+            case "$readonly/" in
+              "$writable/"*)
+                echo "writable test roots may not contain a read-only checkout: $writable" >&2
+                exit 2
+                ;;
+            esac
+          done
+        done
+        for ((left = 0; left < ${#writable_roots[@]}; left++)); do
+          for ((right = left + 1; right < ${#writable_roots[@]}; right++)); do
+            left_path=${writable_roots[$left]}
+            right_path=${writable_roots[$right]}
+            case "$left_path/" in
+              "$right_path/"*) echo "writable test roots overlap: $left_path and $right_path" >&2; exit 2 ;;
+            esac
+            case "$right_path/" in
+              "$left_path/"*) echo "writable test roots overlap: $left_path and $right_path" >&2; exit 2 ;;
+            esac
+          done
+        done
+
+        image_name=$(awk '$1 == "image:" {print $2}' "$ACTION_ROOT/environments/legacy-worker.lock.yml")
+        image_digest=$(awk '$1 == "digest:" {print $2}' "$ACTION_ROOT/environments/legacy-worker.lock.yml")
+        [[ "$image_name" == "ghcr.io/dattalab/moseq2-test-legacy-worker" ]] || {
+          echo "unexpected worker image in reviewed lock: $image_name" >&2
+          exit 2
+        }
+        [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+          echo "worker image is not digest pinned" >&2
+          exit 2
+        }
+        IMAGE="$image_name@$image_digest"
+
+        echo "candidate-set=$CANDIDATE_ROOT/candidate-build/candidates.json" >> "$GITHUB_OUTPUT"
         echo "results=$OUTPUT_DIR" >> "$GITHUB_OUTPUT"
+        echo "worker-image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+        docker version
+        docker pull "$IMAGE"
+
+        docker run --rm --network none \
+          --env MOSEQ2_TEST_ACTION_ROOT=/action \
+          --mount "type=bind,source=$ACTION_ROOT,target=/action,readonly" \
+          --mount "type=bind,source=$WORKSPACE_ROOT,target=/workspace" \
+          "$IMAGE" \
+          --workspace /workspace \
+          --target-python /opt/moseq2/legacy/bin/python \
+          doctor --ci
+
+        fixture_arguments=()
+        if [[ "$TIER_INPUT" != install-smoke ]]; then
+          fixture_arguments+=(--fixture-set historical-v1)
+        fi
+        case "$TIER_INPUT" in
+          pull-request|pipeline-smoke|baseline)
+            fixture_arguments+=(--fixture-set pipeline-smoke-v1)
+            ;;
+        esac
+        if (( ${#fixture_arguments[@]} )); then
+          fetch_network=()
+          fetch_offline=()
+          if [[ "$OFFLINE_INPUT" == true ]]; then
+            fetch_network=(--network none)
+            fetch_offline=(--offline)
+          fi
+          docker run --rm "${fetch_network[@]}" \
+            --env MOSEQ2_TEST_ACTION_ROOT=/action \
+            --mount "type=bind,source=$ACTION_ROOT,target=/action,readonly" \
+            --mount "type=bind,source=$CACHE_DIR,target=/cache" \
+            "$IMAGE" \
+            "${fetch_offline[@]}" \
+            --cache-dir /cache \
+            data fetch "${fixture_arguments[@]}"
+        fi
+
+        docker run --rm --network none \
+          --env MOSEQ2_TEST_ACTION_ROOT=/action \
+          --env MOSEQ2_TEST_SAFE_GIT_DIRECTORY=/source \
+          --mount "type=bind,source=$ACTION_ROOT,target=/action,readonly" \
+          --mount "type=bind,source=$SOURCE,target=/source,readonly" \
+          --mount "type=bind,source=$CANDIDATE_ROOT,target=/candidate" \
+          --mount "type=bind,source=$WORKSPACE_ROOT,target=/workspace" \
+          "$IMAGE" \
+          --workspace /workspace \
+          --output-dir /candidate \
+          --target-python /opt/moseq2/legacy/bin/python \
+          candidates build --source "$PACKAGE_INPUT=/source"
+
+        docker run --rm --network none \
+          --env MOSEQ2_TEST_ACTION_ROOT=/action \
+          --mount "type=bind,source=$ACTION_ROOT,target=/action,readonly" \
+          --mount "type=bind,source=$CANDIDATE_ROOT,target=/candidate,readonly" \
+          "$IMAGE" \
+          candidates verify --candidate-set /candidate/candidate-build/candidates.json
+
+        run_profile() {
+          local profile=$1
+          shift
+          docker run --rm --network none \
+            --env MOSEQ2_TEST_ACTION_ROOT=/action \
+            --mount "type=bind,source=$ACTION_ROOT,target=/action,readonly" \
+            --mount "type=bind,source=$CACHE_DIR,target=/cache,readonly" \
+            --mount "type=bind,source=$CANDIDATE_ROOT,target=/candidate,readonly" \
+            --mount "type=bind,source=$WORKSPACE_ROOT,target=/workspace" \
+            --mount "type=bind,source=$OUTPUT_DIR,target=/results" \
+            "$IMAGE" \
+            --offline \
+            --cache-dir /cache \
+            --workspace /workspace \
+            --output-dir /results \
+            --target-python /opt/moseq2/legacy/bin/python \
+            --no-color \
+            run "$profile" "$@" \
+            --candidate-set /candidate/candidate-build/candidates.json \
+            --keep-sandbox failure
+        }
+
+        run_profile install-smoke
+        if [[ "$TIER_INPUT" != install-smoke ]]; then
+          run_profile historical-regression --package "$PACKAGE_INPUT"
+        fi
+        case "$TIER_INPUT" in
+          pull-request|pipeline-smoke|baseline)
+            case "$PACKAGE_INPUT" in
+              moseq2-extract|moseq2-pca)
+                run_profile pipeline-smoke --through pca
+                ;;
+              *)
+                run_profile pipeline-smoke --start-at model
+                ;;
+            esac
+            ;;
+        esac
+
+    - name: Retain candidate identity and test reports
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: moseq2-test-${{ inputs.package }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          ${{ steps.run.outputs.candidate-set }}
+          ${{ steps.run.outputs.results }}
+        if-no-files-found: warn
+        retention-days: 14

@@ -65,5 +65,31 @@ def test_public_workflows_have_read_only_permissions_and_no_privileged_trigger()
 def test_composite_action_has_the_approved_thin_caller_contract() -> None:
     document = yaml.safe_load((ROOT / "action.yml").read_text(encoding="utf-8"))
     assert document["runs"]["using"] == "composite"
-    assert set(document["inputs"]) >= {"package", "source", "tier", "target-python"}
+    assert set(document["inputs"]) >= {"package", "source", "tier", "cache-dir", "offline"}
+    assert "target-python" not in document["inputs"]
     assert document["inputs"]["tier"]["default"] == "pull-request"
+
+
+def test_composite_action_uses_the_reviewed_worker_without_host_credentials() -> None:
+    text = (ROOT / "action.yml").read_text(encoding="utf-8")
+    assert "environments/legacy-worker.lock.yml" in text
+    assert "docker pull \"$IMAGE\"" in text
+    assert "--network none" in text
+    assert "target=/source,readonly" in text
+    assert "target=/cache,readonly" in text
+    assert "secrets." not in text
+    assert "actions/setup-python" not in text
+    assert "setup-uv" not in text
+
+
+def test_scheduled_certification_proves_cold_warm_and_offline_behavior() -> None:
+    text = (ROOT / ".github/workflows/baseline-certification.yml").read_text(
+        encoding="utf-8"
+    )
+    assert text.count("baseline certify") == 2
+    assert "legacy-worker.lock.yml" in text
+    assert "Run a cold complete baseline certification" in text
+    assert "Run a network-disabled warm complete baseline certification" in text
+    assert "--network none" in text
+    assert "compare run" in text
+    assert "10 * 1024**3" in text
