@@ -1,35 +1,35 @@
 schema_version: 1
 image: ghcr.io/dattalab/moseq2-test-legacy-worker
-digest: sha256:01376ca7047fad6510ef2d80ba85faccdc56be986fe4e262b8276959494f1091
+digest: sha256:a500da25b5904a264be0d98223270189a7398aefaad97b78fa5a6d94fc20ddca
 platform: linux/amd64
-source_commit: c8ef29c35cea74e6333491140766c5938312e625
-source_tree: 2301824c8f0ddc7cece1faf62183c31bdb2c1b6c
+source_commit: 0d9a4ee70bb2b25a5bccd5f6b4fdb8d962ae0512
+source_tree: 739dc49f8cd69f3eac2652f7b361131dea310420
 publication:
-  tag: sha-c8ef29c35cea74e6333491140766c5938312e625
-  workflow_run_id: 30844424436
-  workflow_url: https://github.com/dattalab/moseq2-test/actions/runs/30844424436
-  artifact_name: legacy-worker-publication-c8ef29c35cea74e6333491140766c5938312e625
+  tag: sha-0d9a4ee70bb2b25a5bccd5f6b4fdb8d962ae0512
+  workflow_run_id: 30855413497
+  workflow_url: https://github.com/dattalab/moseq2-test/actions/runs/30855413497
+  artifact_name: legacy-worker-publication-0d9a4ee70bb2b25a5bccd5f6b4fdb8d962ae0512
   visibility: public
-  anonymous_access_verified_at: "2026-08-03T19:05:28Z"
-  anonymous_registry_digest: sha256:01376ca7047fad6510ef2d80ba85faccdc56be986fe4e262b8276959494f1091
+  anonymous_access_verified_at: "2026-08-03T21:55:19Z"
+  anonymous_registry_digest: sha256:a500da25b5904a264be0d98223270189a7398aefaad97b78fa5a6d94fc20ddca
 certification:
-  id: 20260803T191147Z-cert-653d2dc9
+  id: 20260803T214441Z-cert-478f88d6
   status: accepted
   requirements_passed: 25
   requirements_total: 25
-  wall_seconds: 291.77583585099995
-  peak_controller_tree_rss_bytes: 3798626304
+  wall_seconds: 298.700250226
+  peak_controller_tree_rss_bytes: 3730481152
   peak_workspace_bytes: 460307325
-  downloaded_object_bytes: 604993456
+  downloaded_object_bytes: 616901159
 evidence:
-  context_manifest_sha256: e5de0f1b99354026e05c902f4712ea45e6d33d1412885553156799c6c0b167f7
-  sbom_spdx_json_sha256: 412251b97d1ce229b4e386c66cc491474874df5278ac68d910ed91ca4eda8940
-  grype_json_sha256: b24a8669d85b50b8d42365f06a8316e726d0e68973f35456101f890dd888a069
-  certification_json_sha256: 9eb68ce039f78aafd449d8ddbaac3e0ef6469fcc48d36b191febeb5025f7cc32
+  context_manifest_sha256: 0c4c3f8f2a206b5b551860eb7e8d37eb9c327e0f139aac1f8498d779ea35bd80
+  sbom_spdx_json_sha256: d955f57cb9dbf787a7a7d2f573dfbaebb9b78b8d4886cdf03b534a458f1f786b
+  grype_json_sha256: f65e71bdc4f71df44ad955d69516b27e874ac8e91634a07ecca4d917bb7a1f40
+  certification_json_sha256: cd104dbdfdd496eb6a3053d5d120e8b6337bc1ff4d1e246acc65e7c6ff41683b
 attestation:
   predicate_type: https://slsa.dev/provenance/v1
-  subject_digest: sha256:01376ca7047fad6510ef2d80ba85faccdc56be986fe4e262b8276959494f1091
-  workflow_source_commit: 559b0eb4ae94a4ddb57aafacd98464b6168b8828
+  subject_digest: sha256:a500da25b5904a264be0d98223270189a7398aefaad97b78fa5a6d94fc20ddca
+  workflow_source_commit: 0d9a4ee70bb2b25a5bccd5f6b4fdb8d962ae0512
   runner_environment: github-hosted
   transparency_log: https://rekor.sigstore.dev
-  verified_at: "2026-08-03T19:18:16Z"
+  verified_at: "2026-08-03T21:55:19Z"
