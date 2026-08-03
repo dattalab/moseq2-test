@@ -123,6 +123,7 @@ def test_base_images_and_dockerfile_are_immutable() -> None:
     assert "MOSEQ2_TEST_BUILD_TOOLCHAIN_PREFIX=/opt/moseq2/build-toolchain" in dockerfile
     assert "build-toolchain-local.explicit.txt" in dockerfile
     assert "build-toolchain/bin/x86_64-conda-linux-gnu-c++ --version" in dockerfile
+    assert "build-toolchain/x86_64-conda-linux-gnu/sysroot/lib64/libm.so.6" in dockerfile
 
 
 def test_entrypoint_builds_and_installs_the_pinned_action_checkout_offline() -> None:

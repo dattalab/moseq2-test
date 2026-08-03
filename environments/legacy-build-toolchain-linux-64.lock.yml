@@ -1,5 +1,5 @@
 schema_version: 1
-lock_id: moseq2-legacy-build-toolchain-linux-64-v1
+lock_id: moseq2-legacy-build-toolchain-linux-64-v2
 platform: linux-64
 purpose: >-
   Offline GCC/G++ toolchain used only to build candidate wheels. The prefix is
@@ -23,6 +23,7 @@ build_environment:
     -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now
     -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined
     -Wl,-rpath,{prefix}/lib -Wl,-rpath-link,{prefix}/lib -L{prefix}/lib
+    -Wl,--sysroot={prefix}/x86_64-conda-linux-gnu/sysroot
   CMAKE_PREFIX_PATH: '{prefix}:{prefix}/x86_64-conda-linux-gnu/sysroot/usr'
   CONDA_BUILD_SYSROOT: '{prefix}/x86_64-conda-linux-gnu/sysroot'
 packages:

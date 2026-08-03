@@ -114,8 +114,11 @@ def test_locked_candidate_build_toolchain_is_selected(
     assert environment["CONDA_BUILD_SYSROOT"] == str(
         prefix / "x86_64-conda-linux-gnu" / "sysroot"
     )
+    assert environment["LDFLAGS"].endswith(
+        f"--sysroot={prefix}/x86_64-conda-linux-gnu/sysroot"
+    )
     assert evidence is not None
-    assert evidence["lock_id"] == "moseq2-legacy-build-toolchain-linux-64-v1"
+    assert evidence["lock_id"] == "moseq2-legacy-build-toolchain-linux-64-v2"
     assert evidence["environment"] == {
         key: environment[key]
         for key in (

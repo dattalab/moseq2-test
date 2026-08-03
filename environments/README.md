@@ -20,8 +20,9 @@ The worker supply chain is split into independently reviewable locks:
 - `legacy-build-toolchain-linux-64.lock.yml` adds an independently resolved,
   20-package GCC/G++ 11.4 prefix used only for offline candidate-wheel builds,
   including the `crypt.h` compatibility header required by Python 3.7.
-  Its compiler path is selected explicitly; it never replaces or solves into
-  the frozen Python 3.7 runtime prefix.
+  Its compiler path and sysroot are selected explicitly, so historical Python
+  linker flags cannot leak host libraries into candidate wheels; it never
+  replaces or solves into the frozen Python 3.7 runtime prefix.
 - `legacy-pip-py37-linux-x86-64.lock.yml` records all 125 non-MoSeq pip
   distributions. Nine releases available only as source archives are retained
   as hash-locked wheels together with their corresponding-source identities.

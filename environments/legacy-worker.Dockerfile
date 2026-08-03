@@ -45,6 +45,7 @@ RUN micromamba create --yes --offline --prefix /opt/moseq2/legacy \
     && /opt/moseq2/build-toolchain/bin/x86_64-conda-linux-gnu-cc --version \
     && /opt/moseq2/build-toolchain/bin/x86_64-conda-linux-gnu-c++ --version \
     && test -f /opt/moseq2/build-toolchain/include/crypt.h \
+    && test -f /opt/moseq2/build-toolchain/x86_64-conda-linux-gnu/sysroot/lib64/libm.so.6 \
     && mkdir -p /opt/moseq2/source_archives /opt/moseq2/sdists /opt/moseq2/wheels \
       /opt/moseq2/external_sources /opt/moseq2/test_tool_wheels /usr/share/moseq2-test \
     && cp -a /tmp/worker-inputs/source_archives/. /opt/moseq2/source_archives/ \
