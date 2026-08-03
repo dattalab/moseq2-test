@@ -5,15 +5,90 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+import pytest
 
+from moseq2_test.models import CandidateKind, CandidateRecord
 from moseq2_test.registry import profile
+from moseq2_test.sandbox import Sandbox
 from moseq2_test.suites.pipeline_smoke import (
     SELECTED_UUIDS,
+    _pipeline_target,
     _step_result,
     make_compatible_recording,
     make_reduced_extraction,
     make_reduced_scores,
 )
+
+
+def test_candidate_pipeline_installs_the_complete_resolved_stack(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base_python = tmp_path / "legacy" / "bin" / "python"
+    wheel_root = tmp_path / "wheelhouse"
+    candidate_path = tmp_path / "candidate" / "moseq2_extract.whl"
+    resolved = [
+        CandidateRecord(
+            package="moseq2-extract",
+            kind=CandidateKind.WHEEL,
+            location=str(candidate_path),
+            sha256="a" * 64,
+        ),
+        CandidateRecord(
+            package="moseq2-pca",
+            kind=CandidateKind.WHEEL,
+            location="wheelhouse/moseq2_pca.whl",
+            sha256="b" * 64,
+        ),
+    ]
+    captured: dict[str, object] = {}
+
+    def create_target(
+        python: Path,
+        sandbox: Sandbox,
+        records: list[CandidateRecord],
+        timeout: int,
+        *,
+        force: bool,
+    ) -> Path:
+        captured.update(
+            python=python, sandbox=sandbox, records=records, timeout=timeout, force=force
+        )
+        return tmp_path / "target" / "bin" / "python"
+
+    monkeypatch.setattr("moseq2_test.suites.pipeline_smoke._create_layered_target", create_target)
+    sandbox = Sandbox.create(tmp_path / "workspace")
+    target = _pipeline_target(
+        base_python,
+        sandbox,
+        resolved,
+        [resolved[0]],
+        wheel_root=wheel_root,
+        timeout=42,
+    )
+
+    assert target == tmp_path / "target" / "bin" / "python"
+    records = captured["records"]
+    assert isinstance(records, list)
+    assert [record.package for record in records] == ["moseq2-extract", "moseq2-pca"]
+    assert Path(records[0].location) == candidate_path.resolve()
+    assert Path(records[1].location) == (wheel_root / "moseq2_pca.whl").resolve()
+    assert captured["force"] is True
+
+
+def test_unchanged_pipeline_reuses_the_locked_base_environment(tmp_path: Path) -> None:
+    base_python = tmp_path / "legacy" / "bin" / "python"
+    sandbox = Sandbox.create(tmp_path / "workspace")
+    assert (
+        _pipeline_target(
+            base_python,
+            sandbox,
+            [],
+            [],
+            wheel_root=tmp_path / "wheelhouse",
+            timeout=42,
+        )
+        == base_python
+    )
 
 
 def test_profile_preserves_all_28_compact_pipeline_steps() -> None:

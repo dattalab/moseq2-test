@@ -45,6 +45,7 @@ from moseq2_test.suites.install_smoke import (
     _baseline_candidates,
     _create_layered_target,
     _explicit_candidates,
+    _install_records,
     _json,
 )
 
@@ -1212,6 +1213,24 @@ def _validate_pipeline_selection(options: Any) -> bool:
     return bool(options.through != "pca")
 
 
+def _pipeline_target(
+    base_python: Path,
+    sandbox: Sandbox,
+    resolved_candidates: list[CandidateRecord],
+    candidate_records: list[CandidateRecord],
+    *,
+    wheel_root: Path,
+    timeout: int,
+) -> Path:
+    """Create a full-stack target only when at least one candidate replaces a lock."""
+    if not candidate_records:
+        return base_python
+    installation_records = _install_records(resolved_candidates, wheel_root=wheel_root)
+    return _create_layered_target(
+        base_python, sandbox, installation_records, timeout, force=True
+    )
+
+
 def run_pipeline_smoke(options: Any, profile: SuiteProfile) -> tuple[Path, int]:
     """Run the installed eight-package compact real-data pipeline twice."""
     started_at = datetime.now(UTC)
@@ -1281,7 +1300,19 @@ def run_pipeline_smoke(options: Any, profile: SuiteProfile) -> tuple[Path, int]:
             for item in baseline_candidates
         ]
         resolved_candidates = _apply_test_sources(resolved_candidates, options.test_sources)
-        target_python = _create_layered_target(base_python, sandbox, candidate_records, timeout)
+        # The inherited system site-packages expose baseline imports, but their
+        # console scripts live in the base environment's bin directory.  A
+        # candidate target must therefore install the complete resolved stack,
+        # not only the changed wheel, because the compact pipeline invokes the
+        # extract/PCA/model/viz/app entry points from the target environment.
+        target_python = _pipeline_target(
+            base_python,
+            sandbox,
+            resolved_candidates,
+            candidate_records,
+            wheel_root=roots["wheel"],
+            timeout=timeout,
+        )
 
         mirror_value = os.environ.get("MOSEQ2_TEST_FIXTURE_MIRROR")
         mirror = Path(mirror_value) if mirror_value else None
