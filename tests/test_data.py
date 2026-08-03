@@ -180,3 +180,27 @@ def test_tar_regular_file_round_trip(tmp_path: Path) -> None:
 
     extracted = extract_object(layout, item)
     assert (extracted / "nested" / "value.txt").read_bytes() == b"hello"
+
+
+def test_verified_object_and_extraction_hits_work_from_read_only_cache(tmp_path: Path) -> None:
+    archive = tmp_path / "good.zip"
+    with zipfile.ZipFile(archive, "w") as handle:
+        handle.writestr("nested/value.txt", b"hello")
+    item = fixture(archive, unpack="zip", members=1)
+    layout = CacheLayout(tmp_path / "cache")
+    cached = fetch_object(layout, item, mirror=tmp_path, offline=True)
+    extracted = extract_object(layout, item)
+    directories = sorted(
+        (path for path in layout.root.rglob("*") if path.is_dir()), reverse=True
+    )
+    for directory in directories:
+        directory.chmod(0o555)
+    layout.root.chmod(0o555)
+    try:
+        assert fetch_object(layout, item, offline=True) == cached
+        assert extract_object(layout, item) == extracted
+        assert (extracted / "nested" / "value.txt").read_bytes() == b"hello"
+    finally:
+        layout.root.chmod(0o755)
+        for directory in reversed(directories):
+            directory.chmod(0o755)

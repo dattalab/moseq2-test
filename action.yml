@@ -199,7 +199,7 @@ runs:
             "$IMAGE" \
             "${fetch_offline[@]}" \
             --cache-dir /cache \
-            data fetch "${fixture_arguments[@]}"
+            data fetch "${fixture_arguments[@]}" --extract
         fi
 
         docker run --rm --network none \

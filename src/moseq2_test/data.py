@@ -158,8 +158,14 @@ def fetch_object(
     mirror: Path | None = None,
     offline: bool = False,
 ) -> Path:
-    layout.prepare()
     destination = layout.object_path(item.sha256)
+    if destination.is_file():
+        try:
+            verify_object(destination, item)
+            return destination
+        except MissingInput:
+            pass
+    layout.prepare()
     destination.parent.mkdir(parents=True, exist_ok=True)
     with FileLock(str(layout.lock_path(item.sha256))):
         if destination.exists():
@@ -221,16 +227,23 @@ def fetch_selected(
     fixture_sets: list[str],
     mirror: Path | None,
     offline: bool,
+    prepare_extracted: bool = False,
 ) -> dict[str, Any]:
     manifests = _selected_manifests(profile_name=profile_name, fixture_sets=fixture_sets)
     objects = _unique_objects(manifests)
     layout = CacheLayout(cache_dir)
     paths = [fetch_object(layout, item, mirror=mirror, offline=offline) for item in objects]
+    extracted = [
+        extract_object(layout, item)
+        for item in objects
+        if prepare_extracted and item.unpack != "none"
+    ]
     return {
         "status": "verified",
         "fixture_sets": [item.fixture_set for item in manifests],
         "objects": len(paths),
         "bytes": sum(path.stat().st_size for path in paths),
+        "extracted_objects": len(extracted),
         "cache": str(layout.root.resolve()),
     }
 
@@ -355,8 +368,10 @@ def extract_object(layout: CacheLayout, item: FixtureObject, *, recipe_version: 
     source = layout.object_path(item.sha256)
     verify_object(source, item)
     destination = layout.extracted / item.sha256 / recipe_version
+    marker = destination / ".moseq2-test-extracted.json"
+    if marker.is_file():
+        return destination
     with FileLock(str(layout.lock_path(f"extract-{item.sha256}-{recipe_version}"))):
-        marker = destination / ".moseq2-test-extracted.json"
         if marker.is_file():
             return destination
         destination.parent.mkdir(parents=True, exist_ok=True)

@@ -153,6 +153,10 @@ def data_fetch(
     profile: Annotated[str | None, typer.Option("--profile")] = None,
     fixture_set: Annotated[list[str] | None, typer.Option("--fixture-set")] = None,
     mirror: Annotated[Path | None, typer.Option("--mirror")] = None,
+    extract: Annotated[
+        bool,
+        typer.Option("--extract/--no-extract", help="Prepare safe read-only archive expansions"),
+    ] = False,
 ) -> None:
     """Fetch and verify immutable fixture objects."""
     from moseq2_test.data import fetch_selected
@@ -165,6 +169,7 @@ def data_fetch(
             fixture_sets=fixture_set or [],
             mirror=mirror,
             offline=options.offline,
+            prepare_extracted=extract,
         )
     except Moseq2TestError as error:
         _abort(error)
