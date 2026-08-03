@@ -22,6 +22,13 @@ projects:
   corresponding upstream source is retained in the image as
   `git-2.43.0.tar.gz`; the exact build recipe is available at
   `https://github.com/conda-forge/git-feedstock/tree/e8101698475ea5a34d0bb5cfa116711c3cfd0734`.
+- The separately locked candidate-build prefix includes GCC/G++ 11.4.0 and
+  GNU binutils 2.40 (GPL with the GCC Runtime Library Exception where
+  applicable), plus libxcrypt 4.4.36 (LGPL-2.1-or-later). Their exact binary
+  artifacts are recorded in
+  `environments/legacy-build-toolchain-linux-64.lock.yml`; corresponding
+  upstream sources are available from the GNU GCC and binutils release
+  archives and the libxcrypt 4.4.36 release.
 
 Fixture provenance, citations, object-level terms, and hashes live in the
 versioned fixture manifests. The obsolete bucket-root MoSeq2 EULA is not the

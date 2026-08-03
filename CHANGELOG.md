@@ -14,3 +14,7 @@
 - Build `pyhsmm` and `pyhsmm-autoregressive` candidates offline by staging the
   exact hash-locked Eigen 3.3.7 headers into the disposable source export; the
   package checkout remains read-only and build logs retain the input identity.
+- Build compiled candidates with a separate, hash-locked GCC/G++ 11.4 prefix;
+  compiler provenance is logged and the frozen Python 3.7 runtime is unchanged.
+- Require the worker publication workflow to build, install, and import a real
+  Python 3.7 C++ extension before an image can be published.

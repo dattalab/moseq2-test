@@ -1,0 +1,128 @@
+schema_version: 1
+lock_id: moseq2-legacy-build-toolchain-linux-64-v1
+platform: linux-64
+purpose: >-
+  Offline GCC/G++ toolchain used only to build candidate wheels. The prefix is
+  separate from the frozen Python 3.7 runtime, and its ABI runtime packages are
+  the exact builds already captured by the legacy environment.
+compiler:
+  version: 11.4.0
+  cc: x86_64-conda-linux-gnu-cc
+  cxx: x86_64-conda-linux-gnu-c++
+build_environment:
+  CPPFLAGS: -DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem {prefix}/include
+  CFLAGS: >-
+    -march=nocona -mtune=haswell -ftree-vectorize -fPIC
+    -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe
+    -isystem {prefix}/include
+  CXXFLAGS: >-
+    -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona
+    -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong
+    -fno-plt -O2 -ffunction-sections -pipe -isystem {prefix}/include
+  LDFLAGS: >-
+    -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now
+    -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined
+    -Wl,-rpath,{prefix}/lib -Wl,-rpath-link,{prefix}/lib -L{prefix}/lib
+  CMAKE_PREFIX_PATH: '{prefix}:{prefix}/x86_64-conda-linux-gnu/sysroot/usr'
+  CONDA_BUILD_SYSROOT: '{prefix}/x86_64-conda-linux-gnu/sysroot'
+packages:
+- url: https://conda.anaconda.org/conda-forge/noarch/kernel-headers_linux-64-5.14.0-he073ed8_3.conda
+  filename: kernel-headers_linux-64-5.14.0-he073ed8_3.conda
+  size: 1410267
+  sha256: c4d973dd80ab10028b3e4c58c1c6d8f437bfeaf6069dafb1130dabc550e9caf4
+  md5: 1e453742ed8f6b4250c66be1dd6ba4fe
+- url: https://conda.anaconda.org/conda-forge/linux-64/ld_impl_linux-64-2.40-hf3520f5_7.conda
+  filename: ld_impl_linux-64-2.40-hf3520f5_7.conda
+  size: 707602
+  sha256: 764b6950aceaaad0c67ef925417594dd14cd2e22fff864aeef455ac259263d15
+  md5: b80f2f396ca2c28b8c14c437a4ed1e74
+- url: https://conda.anaconda.org/conda-forge/noarch/libgcc-devel_linux-64-11.4.0-h8f596e0_113.conda
+  filename: libgcc-devel_linux-64-11.4.0-h8f596e0_113.conda
+  size: 2451854
+  sha256: 45fe07880c918baf144377abfdaf0d409617ceb1758f28e022e83615b9f67863
+  md5: 8e1973bcc2b9405e80ed0cad1b9bd607
+- url: https://conda.anaconda.org/conda-forge/linux-64/libgomp-15.2.0-he0feb66_19.conda
+  filename: libgomp-15.2.0-he0feb66_19.conda
+  size: 603817
+  sha256: 5abe4ab9d93f6c9757d654f1969ae2267d4505315c1f2f8fe705fd60af084f1b
+  md5: faac990cb7aedc7f3a2224f2c9b0c26c
+- url: https://conda.anaconda.org/conda-forge/linux-64/libxcrypt-4.4.36-hd590300_1.conda
+  filename: libxcrypt-4.4.36-hd590300_1.conda
+  size: 100393
+  sha256: 6ae68e0b86423ef188196fff6207ed0c8195dd84273cb5623b85aa08033a410c
+  md5: 5aa797f8787fe7a17d1b0821485b5adc
+- url: https://conda.anaconda.org/conda-forge/noarch/libstdcxx-devel_linux-64-11.4.0-h8f596e0_113.conda
+  filename: libstdcxx-devel_linux-64-11.4.0-h8f596e0_113.conda
+  size: 11655670
+  sha256: 3bb19ec8f159db05b94e15905eeb7e9be6400567a210213480cd33cb59afb69a
+  md5: 511cb3d827a35d3030d42679d286a7cd
+- url: https://conda.anaconda.org/conda-forge/noarch/tzdata-2026c-h151e31d_0.conda
+  filename: tzdata-2026c-h151e31d_0.conda
+  size: 118849
+  sha256: b928c30ddcb0e3f544c6eade8352737e6e610e263276b90232db6a578ef899d8
+  md5: fcb489df604d100968b737f2cb6076c6
+- url: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
+  filename: _openmp_mutex-4.5-20_gnu.conda
+  size: 28948
+  sha256: 1dd3fffd892081df9726d7eb7e0dea6198962ba775bd88842135a4ddb4deb3c9
+  md5: a9f577daf3de00bca7c3c76c0ecbd1de
+- url: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.34-h087de78_3.conda
+  filename: sysroot_linux-64-2.34-h087de78_3.conda
+  size: 40779381
+  sha256: 08c50c314b331730eeb8f87c39a45e5426a5463e078392ab283e2552d753443e
+  md5: b04e3a97151611d6a35c8c068b2a03a2
+- url: https://conda.anaconda.org/conda-forge/linux-64/binutils_impl_linux-64-2.40-ha1999f0_7.conda
+  filename: binutils_impl_linux-64-2.40-ha1999f0_7.conda
+  size: 6250821
+  sha256: 230f3136d17fdcf0e6da3a3ae59118570bc18106d79dd29bf2f341338d2a42c4
+  md5: 3f840c7ed70a96b5ebde8044b2f36f32
+- url: https://conda.anaconda.org/conda-forge/linux-64/libgcc-15.2.0-he0feb66_19.conda
+  filename: libgcc-15.2.0-he0feb66_19.conda
+  size: 1041084
+  sha256: 8e0a3b5e41272e5678499b5dfc4cddb673f9e935de01eb0767ce857001229f46
+  md5: 57736f29cc2b0ec0b6c2952d3f101b6a
+- url: https://conda.anaconda.org/conda-forge/linux-64/binutils_linux-64-2.40-hb3c18ed_4.conda
+  filename: binutils_linux-64-2.40-hb3c18ed_4.conda
+  size: 29029
+  sha256: 4ddb8c7c0d42f4efe673cce579f66e8b2644a257d3aa935f9ab7b69c525d4485
+  md5: 19286994c03c5207a70c7cfabe294570
+- url: https://conda.anaconda.org/conda-forge/linux-64/libgcc-ng-15.2.0-h69a702a_19.conda
+  filename: libgcc-ng-15.2.0-h69a702a_19.conda
+  size: 27694
+  sha256: 9dcf54adfaa5e861123c2da4f2f0451a685464ea7e5a41ad91cf67b31d658d98
+  md5: 331ee9b72b9dff570d56b1302c5ab37d
+- url: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-15.2.0-h934c35e_19.conda
+  filename: libstdcxx-15.2.0-h934c35e_19.conda
+  size: 5852044
+  sha256: dff1058c76ec6b8759e41cefa2508162d00e4a5e6721aa68ec3fd10094e702dc
+  md5: 5794b3bdc38177caf969dabd3af08549
+- url: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-ng-15.2.0-hdf11a46_19.conda
+  filename: libstdcxx-ng-15.2.0-hdf11a46_19.conda
+  size: 27776
+  sha256: 0672b6b6e1791c92e8eccad58081a99d614fcf82bca5841f9dfa3c3e658f83b9
+  md5: e5ce228e579726c07255dbf90dc62101
+- url: https://conda.anaconda.org/conda-forge/linux-64/libsanitizer-11.4.0-h5763a12_13.conda
+  filename: libsanitizer-11.4.0-h5763a12_13.conda
+  size: 3694079
+  sha256: c565078a650e3bab45b63d43c34cea10b1169560547d032a04297560849c362e
+  md5: 2c5415ef0640355a2154ebdd8494dc05
+- url: https://conda.anaconda.org/conda-forge/linux-64/gcc_impl_linux-64-11.4.0-h00c12a0_13.conda
+  filename: gcc_impl_linux-64-11.4.0-h00c12a0_13.conda
+  size: 55558644
+  sha256: 92d19dcacde45abe3011d559d34db72f5d038ad2e78b5d6ea54ff3819a26f244
+  md5: 84a8282b1e54ec4db2855069a917680d
+- url: https://conda.anaconda.org/conda-forge/linux-64/gcc_linux-64-11.4.0-ha077dfb_4.conda
+  filename: gcc_linux-64-11.4.0-ha077dfb_4.conda
+  size: 31262
+  sha256: 31bbd2d6d89ba6b371a341ff0abe3ad86b40652c86420d74bc8a44feb47323f7
+  md5: 4486720bf24fecb4a21ab3840433411f
+- url: https://conda.anaconda.org/conda-forge/linux-64/gxx_impl_linux-64-11.4.0-h634f3ee_13.conda
+  filename: gxx_impl_linux-64-11.4.0-h634f3ee_13.conda
+  size: 11702935
+  sha256: ba6cd472e28268a6de1d4af74bafd9034789c132b15c38e727900fe6b85ebdb7
+  md5: aa66d62e50aba20923e0c0121145fcbf
+- url: https://conda.anaconda.org/conda-forge/linux-64/gxx_linux-64-11.4.0-h35bfe5d_4.conda
+  filename: gxx_linux-64-11.4.0-h35bfe5d_4.conda
+  size: 29582
+  sha256: bc55c16382edde80880d1f4802ceaf460f259d20cd44156749e6e7f91ef19b7a
+  md5: a3b2fe00ce0def24b147d08db9ac0bde

@@ -17,6 +17,11 @@ The worker supply chain is split into independently reviewable locks:
   libraries that the O2 process environment obtained from its host plus one
   Git client used to export candidate worktrees. It does not replace any
   captured Conda package.
+- `legacy-build-toolchain-linux-64.lock.yml` adds an independently resolved,
+  20-package GCC/G++ 11.4 prefix used only for offline candidate-wheel builds,
+  including the `crypt.h` compatibility header required by Python 3.7.
+  Its compiler path is selected explicitly; it never replaces or solves into
+  the frozen Python 3.7 runtime prefix.
 - `legacy-pip-py37-linux-x86-64.lock.yml` records all 125 non-MoSeq pip
   distributions. Nine releases available only as source archives are retained
   as hash-locked wheels together with their corresponding-source identities.
@@ -36,6 +41,7 @@ uv run python environments/prepare_legacy_worker_context.py \
 ```
 
 `publish-legacy-worker.yml` builds the image from that verified context, runs
+an actual Python 3.7 C++ extension build/import through the locked toolchain,
 the installed-package baseline certification, generates an SPDX SBOM, retains
 a Grype scan, publishes only from its trusted release environment, and creates
 GitHub/registry provenance. The resulting digest is recorded separately after

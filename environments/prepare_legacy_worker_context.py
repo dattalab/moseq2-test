@@ -90,12 +90,17 @@ def prepare(repository: Path, output: Path) -> dict[str, Any]:
     environments = repository / "environments"
     conda = load(environments / "legacy-conda-linux-64.lock.yml")
     runtime = load(environments / "legacy-container-runtime-linux-64.lock.yml")
+    build_toolchain = load(environments / "legacy-build-toolchain-linux-64.lock.yml")
     pip_lock = load(environments / "legacy-pip-py37-linux-x86-64.lock.yml")
     test_tools = load(environments / "legacy-test-tools.lock.yml")
     worker = load(environments / "legacy-worker-inputs.lock.yml")
 
     download_jobs: list[tuple[dict[str, Any], Path, str]] = []
-    for record in [*conda["packages"], *runtime["packages"]]:
+    for record in [
+        *conda["packages"],
+        *runtime["packages"],
+        *build_toolchain["packages"],
+    ]:
         download_jobs.append((record, output / "conda", "url"))
     for record in pip_lock["packages"]:
         selected = {
@@ -137,6 +142,18 @@ def prepare(repository: Path, output: Path) -> dict[str, Any]:
         )
     (output / "conda-local.explicit.txt").write_text(
         "\n".join(conda_explicit) + "\n", encoding="utf-8"
+    )
+
+    build_toolchain_explicit = [
+        "# Local, hash-verified candidate build toolchain packages.",
+        "@EXPLICIT",
+    ]
+    for record in build_toolchain["packages"]:
+        build_toolchain_explicit.append(
+            f"file:///tmp/worker-inputs/conda/{record['filename']}#{record['md5']}"
+        )
+    (output / "build-toolchain-local.explicit.txt").write_text(
+        "\n".join(build_toolchain_explicit) + "\n", encoding="utf-8"
     )
 
     pip_requirements = ["# Hash-locked Python 3.7 dependencies staged in the build context."]

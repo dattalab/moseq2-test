@@ -92,7 +92,7 @@ jobs:
           candidate_source="$RUNNER_TEMP/candidate-source"
           candidate_output="$RUNNER_TEMP/candidate-output"
           candidate_workspace="$RUNNER_TEMP/candidate-workspace"
-          cp -a tests/fixtures/synthetic-candidate "$candidate_source"
+          cp -a tests/fixtures/synthetic-compiled-candidate "$candidate_source"
           mkdir -p "$candidate_output" "$candidate_workspace"
           git -C "$candidate_source" init --initial-branch=main
           git -C "$candidate_source" config user.name "moseq2-test CI"
@@ -110,6 +110,18 @@ jobs:
             --target-python /opt/moseq2/legacy/bin/python \
             candidates build --source moseq2-extract=/source
           test -s "$candidate_output/candidate-build/candidates.json"
+          candidate_wheel=$(find "$candidate_output/candidate-build" -maxdepth 1 \
+            -type f -name 'moseq2_extract-*.whl' -print -quit)
+          test -n "$candidate_wheel"
+          docker run --rm \
+            --entrypoint /bin/bash \
+            --mount "type=bind,source=$candidate_wheel,target=/candidate.whl,readonly" \
+            "$IMAGE_TAG" \
+            -c 'set -euo pipefail
+                /opt/moseq2/legacy/bin/python -m venv --system-site-packages /tmp/compiled-smoke
+                /tmp/compiled-smoke/bin/python -m pip install --no-index --no-deps /candidate.whl
+                test "$(/tmp/compiled-smoke/bin/python -c \
+                  "import moseq2_test_compiled; print(moseq2_test_compiled.answer())")" = 42'
       - name: Generate SPDX JSON software bill of materials
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:

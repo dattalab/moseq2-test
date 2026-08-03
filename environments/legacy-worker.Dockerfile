@@ -29,16 +29,22 @@ ENV MAMBA_ROOT_PREFIX=/opt/micromamba \
     MOSEQ2_TEST_WHEEL_MIRROR=/opt/moseq2/wheels \
     MOSEQ2_TEST_EXTERNAL_SOURCE_MIRROR=/opt/moseq2/external_sources \
     MOSEQ2_TEST_TEST_TOOL_WHEEL_MIRROR=/opt/moseq2/test_tool_wheels \
+    MOSEQ2_TEST_BUILD_TOOLCHAIN_PREFIX=/opt/moseq2/build-toolchain \
     PATH=/opt/moseq2/controller/bin:/opt/moseq2/legacy/bin:/usr/local/bin:/usr/bin:/bin
 
 RUN micromamba create --yes --offline --prefix /opt/moseq2/legacy \
       --file /tmp/worker-inputs/conda-local.explicit.txt \
+    && micromamba create --yes --offline --prefix /opt/moseq2/build-toolchain \
+      --file /tmp/worker-inputs/build-toolchain-local.explicit.txt \
     && /opt/moseq2/legacy/bin/python -m pip install --no-index --no-deps --require-hashes \
       --requirement /tmp/worker-inputs/pip-local.requirements.txt \
     && /opt/moseq2/legacy/bin/python -m pip install --no-index --no-deps --require-hashes \
       --requirement /tmp/worker-inputs/baseline-wheels-local.requirements.txt \
     && /opt/moseq2/legacy/bin/python -m pip check \
     && /opt/moseq2/legacy/bin/git --version \
+    && /opt/moseq2/build-toolchain/bin/x86_64-conda-linux-gnu-cc --version \
+    && /opt/moseq2/build-toolchain/bin/x86_64-conda-linux-gnu-c++ --version \
+    && test -f /opt/moseq2/build-toolchain/include/crypt.h \
     && mkdir -p /opt/moseq2/source_archives /opt/moseq2/sdists /opt/moseq2/wheels \
       /opt/moseq2/external_sources /opt/moseq2/test_tool_wheels /usr/share/moseq2-test \
     && cp -a /tmp/worker-inputs/source_archives/. /opt/moseq2/source_archives/ \

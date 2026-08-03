@@ -39,6 +39,7 @@ TARGET_PACKAGES = {
 EIGEN_PACKAGES = {"pyhsmm", "pyhsmm-autoregressive"}
 EIGEN_MAX_MEMBERS = 5_000
 EIGEN_MAX_UNPACKED_BYTES = 100 * 1024 * 1024
+BUILD_TOOLCHAIN_ENVIRONMENT = "MOSEQ2_TEST_BUILD_TOOLCHAIN_PREFIX"
 
 
 def canonical_package(name: str) -> str:
@@ -236,12 +237,67 @@ def inspect_wheel(path: Path, *, expected_package: str | None = None) -> dict[st
     }
 
 
+def _candidate_build_environment() -> tuple[dict[str, str], dict[str, object] | None]:
+    """Select the separately locked compiler prefix when the worker declares it."""
+    environment = os.environ.copy()
+    raw_prefix = environment.get(BUILD_TOOLCHAIN_ENVIRONMENT)
+    if not raw_prefix:
+        return environment, None
+    prefix = Path(raw_prefix).expanduser()
+    if not prefix.is_absolute():
+        raise InvalidConfiguration(f"{BUILD_TOOLCHAIN_ENVIRONMENT} must be absolute")
+    prefix = prefix.resolve()
+    if not prefix.is_dir():
+        raise MissingInput(f"candidate build toolchain prefix is missing: {prefix}")
+    with resource("environments", "legacy-build-toolchain-linux-64.lock.yml") as lock_path:
+        lock = load_yaml(lock_path)
+    compiler = lock.get("compiler")
+    if not isinstance(compiler, dict):
+        raise InvalidConfiguration("candidate build toolchain lock has no compiler record")
+    cc_name = compiler.get("cc")
+    cxx_name = compiler.get("cxx")
+    if not isinstance(cc_name, str) or not isinstance(cxx_name, str):
+        raise InvalidConfiguration("candidate build toolchain compiler names are malformed")
+    bin_directory = prefix / "bin"
+    cc = bin_directory / cc_name
+    cxx = bin_directory / cxx_name
+    for label, path in (("C compiler", cc), ("C++ compiler", cxx)):
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise MissingInput(f"locked {label} is missing or not executable: {path}")
+    inherited_path = environment.get("PATH")
+    environment["PATH"] = str(bin_directory) + (
+        f"{os.pathsep}{inherited_path}" if inherited_path else ""
+    )
+    environment["CC"] = str(cc)
+    environment["CXX"] = str(cxx)
+    locked_environment = lock.get("build_environment")
+    if not isinstance(locked_environment, dict) or not all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in locked_environment.items()
+    ):
+        raise InvalidConfiguration("candidate build toolchain environment is malformed")
+    selected_environment: dict[str, str] = {}
+    for key, value in locked_environment.items():
+        expanded = value.format(prefix=prefix)
+        environment[key] = expanded
+        selected_environment[key] = expanded
+    return environment, {
+        "lock_id": lock.get("lock_id"),
+        "prefix": str(prefix),
+        "version": compiler.get("version"),
+        "cc": str(cc),
+        "cxx": str(cxx),
+        "environment": selected_environment,
+    }
+
+
 def _build_distributions(
     *,
     python: Path,
     source: Path,
     output: Path,
     legacy_setup: bool,
+    environment: dict[str, str] | None = None,
 ) -> list[subprocess.CompletedProcess[str]]:
     """Build an sdist and wheel without importing the candidate in the controller.
 
@@ -277,11 +333,14 @@ def _build_distributions(
                 str(output),
             ]
         ]
+    if environment is None:
+        environment, _toolchain = _candidate_build_environment()
     completed: list[subprocess.CompletedProcess[str]] = []
     for command in commands:
         result = subprocess.run(
             command,
             cwd=source,
+            env=environment,
             check=False,
             capture_output=True,
             text=True,
@@ -322,11 +381,13 @@ def build_sources(
             python = build_python or Path(sys.executable)
             if not python.is_file():
                 raise MissingInput(f"candidate build Python does not exist: {python}")
+            build_environment, build_toolchain = _candidate_build_environment()
             completed = _build_distributions(
                 python=python,
                 source=export,
                 output=wheel_output,
                 legacy_setup=build_python is not None and (export / "setup.py").is_file(),
+                environment=build_environment,
             )
             stdout = "\n".join(
                 f"$ {' '.join(result.args)}\n{result.stdout}" for result in completed
@@ -335,6 +396,13 @@ def build_sources(
                 stdout = (
                     "$ moseq2-test stage locked external build input\n"
                     + json.dumps(external_build_input, sort_keys=True)
+                    + "\n"
+                    + stdout
+                )
+            if build_toolchain is not None:
+                stdout = (
+                    "$ moseq2-test select locked candidate build toolchain\n"
+                    + json.dumps(build_toolchain, sort_keys=True)
                     + "\n"
                     + stdout
                 )

@@ -40,6 +40,12 @@ headers into the disposable Git export before invoking the package's unchanged
 build. The source checkout stays read-only, network access stays disabled, and
 the external input identity is retained in the candidate build log.
 
+Compiled candidates use the separately hash-locked GCC/G++ 11.4 prefix. The
+controller selects its explicit compiler wrappers only during source builds and
+records that selection in the build log. The frozen Python 3.7 runtime remains
+a distinct prefix, so adding build capability does not re-solve or mutate the
+baseline oracle.
+
 ## Data and sandboxes
 
 The fixture cache is content addressed by SHA-256. Downloads are locked and

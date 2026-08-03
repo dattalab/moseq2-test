@@ -26,6 +26,11 @@ def load(name: str) -> dict[str, object]:
             "legacy-container-runtime-linux-64.explicit.txt",
             14,
         ),
+        (
+            "legacy-build-toolchain-linux-64.lock.yml",
+            "legacy-build-toolchain-linux-64.explicit.txt",
+            20,
+        ),
     ],
 )
 def test_conda_explicit_files_match_independent_hash_locks(
@@ -65,6 +70,24 @@ def test_pip_requirements_match_125_exact_python37_artifacts() -> None:
         assert str(item["install_url"]).startswith("https://")
 
 
+def test_candidate_build_toolchain_is_separate_and_abi_compatible() -> None:
+    legacy_records = load("legacy-conda-linux-64.lock.yml")["packages"]
+    toolchain = load("legacy-build-toolchain-linux-64.lock.yml")
+    toolchain_records = toolchain["packages"]
+    assert isinstance(legacy_records, list)
+    assert isinstance(toolchain_records, list)
+    assert toolchain["compiler"] == {
+        "version": "11.4.0",
+        "cc": "x86_64-conda-linux-gnu-cc",
+        "cxx": "x86_64-conda-linux-gnu-c++",
+    }
+    assert any(item["filename"].startswith("libxcrypt-") for item in toolchain_records)
+    legacy_by_filename = {item["filename"]: item for item in legacy_records}
+    shared = [item for item in toolchain_records if item["filename"] in legacy_by_filename]
+    assert len(shared) == 6
+    assert all(item == legacy_by_filename[item["filename"]] for item in shared)
+
+
 def test_worker_input_lock_is_complete_and_content_addressed() -> None:
     records = load("legacy-worker-inputs.lock.yml")["objects"]
     assert isinstance(records, list)
@@ -97,6 +120,9 @@ def test_base_images_and_dockerfile_are_immutable() -> None:
         assert f"{item['tag']}@{item['index_digest']}" in dockerfile
     assert "--require-hashes" in dockerfile
     assert "micromamba create --yes --offline" in dockerfile
+    assert "MOSEQ2_TEST_BUILD_TOOLCHAIN_PREFIX=/opt/moseq2/build-toolchain" in dockerfile
+    assert "build-toolchain-local.explicit.txt" in dockerfile
+    assert "build-toolchain/bin/x86_64-conda-linux-gnu-c++ --version" in dockerfile
 
 
 def test_entrypoint_builds_and_installs_the_pinned_action_checkout_offline() -> None:

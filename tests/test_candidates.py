@@ -11,6 +11,7 @@ import pytest
 
 from moseq2_test.candidates import (
     _build_distributions,
+    _candidate_build_environment,
     _stage_locked_eigen,
     build_sources,
     inspect_wheel,
@@ -68,8 +69,13 @@ def test_explicit_python_uses_native_legacy_build_commands(
 ) -> None:
     commands: list[list[str]] = []
 
-    def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+    environments: list[dict[str, str]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         commands.append(command)
+        environment = kwargs.get("env")
+        assert isinstance(environment, dict)
+        environments.append(environment)
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -82,6 +88,56 @@ def test_explicit_python_uses_native_legacy_build_commands(
     assert [result.returncode for result in results] == [0, 0]
     assert commands[0][1:3] == ["setup.py", "sdist"]
     assert commands[1][1:6] == ["-m", "pip", "wheel", "--no-deps", "--no-build-isolation"]
+    assert len(environments) == 2
+
+
+def test_locked_candidate_build_toolchain_is_selected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prefix = tmp_path / "toolchain"
+    bin_directory = prefix / "bin"
+    bin_directory.mkdir(parents=True)
+    for name in ("x86_64-conda-linux-gnu-cc", "x86_64-conda-linux-gnu-c++"):
+        compiler = bin_directory / name
+        compiler.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        compiler.chmod(0o755)
+    monkeypatch.setenv("MOSEQ2_TEST_BUILD_TOOLCHAIN_PREFIX", str(prefix))
+    monkeypatch.setenv("PATH", "/inherited/bin")
+
+    environment, evidence = _candidate_build_environment()
+
+    assert environment["CC"] == str(bin_directory / "x86_64-conda-linux-gnu-cc")
+    assert environment["CXX"] == str(bin_directory / "x86_64-conda-linux-gnu-c++")
+    assert environment["PATH"] == f"{bin_directory}:/inherited/bin"
+    assert environment["CPPFLAGS"].endswith(f"-isystem {prefix}/include")
+    assert f"-L{prefix}/lib" in environment["LDFLAGS"]
+    assert environment["CONDA_BUILD_SYSROOT"] == str(
+        prefix / "x86_64-conda-linux-gnu" / "sysroot"
+    )
+    assert evidence is not None
+    assert evidence["lock_id"] == "moseq2-legacy-build-toolchain-linux-64-v1"
+    assert evidence["environment"] == {
+        key: environment[key]
+        for key in (
+            "CFLAGS",
+            "CMAKE_PREFIX_PATH",
+            "CONDA_BUILD_SYSROOT",
+            "CPPFLAGS",
+            "CXXFLAGS",
+            "LDFLAGS",
+        )
+    }
+
+
+def test_declared_candidate_build_toolchain_must_be_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prefix = tmp_path / "toolchain"
+    prefix.mkdir()
+    monkeypatch.setenv("MOSEQ2_TEST_BUILD_TOOLCHAIN_PREFIX", str(prefix))
+
+    with pytest.raises(MissingInput, match="compiler"):
+        _candidate_build_environment()
 
 
 def _write_eigen_archive(path: Path, member_name: str = "eigen-3.3.7/Eigen/Core") -> None:
