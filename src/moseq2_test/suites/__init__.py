@@ -52,6 +52,11 @@ def run_profile(options: RunOptions) -> SuiteRun:
 
         run_directory, exit_code = run_install_smoke(options, selected)
         return SuiteRun(run_directory=run_directory, exit_code=exit_code)
+    if selected.name == "historical-regression":
+        from moseq2_test.suites.historical_regression import run_historical_regression
+
+        run_directory, exit_code = run_historical_regression(options, selected)
+        return SuiteRun(run_directory=run_directory, exit_code=exit_code)
     raise ProfileUnavailable(f"profile {selected.name!r} has no installed runner yet")
 
 

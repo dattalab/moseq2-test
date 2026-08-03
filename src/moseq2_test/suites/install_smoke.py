@@ -474,7 +474,9 @@ def run_install_smoke(options: Any, profile: SuiteProfile) -> tuple[Path, int]:
         raise InvalidConfiguration("install-smoke container execution is unavailable until P10")
     if options.target_python is None:
         raise MissingInput("install-smoke process execution requires --target-python")
-    base_python = options.target_python.expanduser().resolve()
+    # Preserve a venv entry point rather than resolving its interpreter symlink;
+    # resolving it would silently discard the venv's pyvenv.cfg and overlays.
+    base_python = options.target_python.expanduser().absolute()
     if not base_python.is_file():
         raise MissingInput(f"target Python does not exist: {base_python}")
 

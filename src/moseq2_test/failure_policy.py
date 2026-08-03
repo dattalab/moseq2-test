@@ -141,8 +141,15 @@ def junit_observations(
                 nodeid = "::".join([file_part, *class_part, name])
         message = "\n".join(value for value in (child.attrib.get("message"), child.text) if value)
         exception = child.attrib.get("type")
+        if exception:
+            exception = exception.split(".")[-1]
         if exception is None:
-            match = re.search(r"(?:^|\n)([A-Za-z][A-Za-z0-9_.]*(?:Error|Exception)):", message)
+            match = re.search(
+                r"(?:^|\n)(?:E\s+)?([A-Za-z][A-Za-z0-9_.]*(?:Error|Exception)):",
+                message,
+            )
+            if match is None:
+                match = re.search(r":\s*([A-Za-z][A-Za-z0-9_.]*(?:Error|Exception))\s*$", message)
             exception = match.group(1).split(".")[-1] if match else None
         results.append(
             ObservedFailure(

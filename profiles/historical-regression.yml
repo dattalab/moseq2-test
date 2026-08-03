@@ -1,11 +1,69 @@
 schema_version: 1
 name: historical-regression
-implemented: false
+implemented: true
 owner: dattalab/moseq2-test maintainers
 description: Exact package-owned historical tests at the eight sealed baseline commits.
-packages: [moseq2-extract, moseq2-pca, moseq2-model, moseq2-viz, moseq2-app, pybasicbayes, pyhsmm, pyhsmm-autoregressive]
-fixture_sets: [historical-v1]
-stages: [test]
-resources: {cpu: 2, memory_gib: 6, disk_gib: 3, timeout_seconds: 1800}
-steps: []
-
+packages:
+  - moseq2-extract
+  - moseq2-pca
+  - moseq2-model
+  - moseq2-viz
+  - moseq2-app
+  - pybasicbayes
+  - pyhsmm
+  - pyhsmm-autoregressive
+fixture_sets:
+  - historical-v1
+stages:
+  - test
+resources:
+  cpu: 2
+  memory_gib: 6
+  disk_gib: 3
+  timeout_seconds: 1800
+steps:
+  - id: historical-tests-moseq2-extract
+    package: moseq2-extract
+    stage: test
+    operation: pytest
+    command: [python, -m, pytest]
+    fixtures: [historical-fixtures--moseq2-extract-zip]
+  - id: historical-tests-moseq2-pca
+    package: moseq2-pca
+    stage: test
+    operation: pytest
+    command: [python, -m, pytest]
+    fixtures: [historical-fixtures--moseq2-pca-zip]
+  - id: historical-tests-moseq2-model
+    package: moseq2-model
+    stage: test
+    operation: pytest
+    command: [python, -m, pytest]
+    fixtures: [historical-fixtures--moseq2-model-zip]
+  - id: historical-tests-moseq2-viz
+    package: moseq2-viz
+    stage: test
+    operation: pytest
+    command: [python, -m, pytest]
+    fixtures: [historical-fixtures--moseq2-viz-zip]
+  - id: historical-tests-moseq2-app
+    package: moseq2-app
+    stage: test
+    operation: pytest
+    command: [python, -m, pytest]
+    fixtures: [historical-fixtures--moseq2-app-zip]
+  - id: historical-tests-pybasicbayes
+    package: pybasicbayes
+    stage: test
+    operation: nose
+    command: [python, -m, nose, tests, -A, not slow and not random]
+  - id: historical-tests-pyhsmm
+    package: pyhsmm
+    stage: test
+    operation: nose
+    command: [python, -m, nose, tests, -A, not slow]
+  - id: historical-tests-pyhsmm-autoregressive
+    package: pyhsmm-autoregressive
+    stage: test
+    operation: nose
+    command: [python, -m, nose, tests]

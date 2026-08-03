@@ -161,6 +161,8 @@ def operation_run_command(parameters):
     command = parameters["command"]
     environment = dict(os.environ)
     environment.update(parameters.get("environment", {}))
+    for name in parameters.get("unset_environment", []):
+        environment.pop(name, None)
     timeout = int(parameters.get("timeout", 300))
     completed = subprocess.run(
         command,

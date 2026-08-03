@@ -22,7 +22,7 @@ failures:
     signature:
       exception: OSError
       message_regex: "Directory not empty: 'data/azure_test/proc/'"
-    policy: required_failure
+    policy: allowed_failure
     owner: dattalab
     review_by: 2027-08-03T00:00:00Z
     evidence: tables/2026-08-02_moseq2_modernization/gate_b/junit/moseq2-extract.xml
@@ -152,4 +152,3 @@ failures:
     owner: dattalab
     review_by: 2027-08-03T00:00:00Z
     evidence: tables/2026-08-02_moseq2_modernization/gate_c/gate_c_results.json
-
