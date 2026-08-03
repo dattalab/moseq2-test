@@ -1,0 +1,11 @@
+schema_version: 1
+name: extraction-v1
+kind: extraction-h5
+rtol: 1.0e-7
+atol: 1.0e-8
+compare_attributes: true
+require_dtype: true
+ignore:
+  - /metadata/extraction/@attributes/(created_at|command|source_path)$
+  - /metadata/(path|session_path)$
+

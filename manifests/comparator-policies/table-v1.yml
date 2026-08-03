@@ -1,0 +1,9 @@
+schema_version: 1
+name: table-v1
+kind: table
+rtol: 1.0e-7
+atol: 1.0e-8
+require_dtype: true
+require_order: true
+ignore: []
+

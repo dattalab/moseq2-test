@@ -1,0 +1,8 @@
+schema_version: 1
+name: numpy-v1
+kind: numpy
+rtol: 1.0e-7
+atol: 1.0e-8
+require_dtype: true
+ignore: []
+

@@ -1,0 +1,8 @@
+schema_version: 1
+name: model-v1
+kind: trusted-model
+rtol: 1.0e-7
+atol: 1.0e-8
+ignore:
+  - /structure/values/(training_seconds|created_at|output_path)$
+

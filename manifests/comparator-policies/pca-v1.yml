@@ -1,0 +1,12 @@
+schema_version: 1
+name: pca-v1
+kind: pca
+rtol: 1.0e-6
+atol: 1.0e-7
+require_dtype: true
+ignore: []
+components_path: /components
+scores_path: /scores
+variance_path: /explained_variance
+sign_alignment: component-dot-product
+

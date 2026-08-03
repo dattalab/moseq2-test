@@ -1,0 +1,8 @@
+schema_version: 1
+name: video-v1
+kind: video
+rtol: 0
+atol: 0
+ignore: []
+ignored_properties: [size, duration]
+

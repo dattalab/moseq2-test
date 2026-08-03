@@ -1,0 +1,8 @@
+schema_version: 1
+name: config-v1
+kind: config-yaml
+rtol: 0
+atol: 0
+ignore:
+  - /(?:output_dir|input_dir|model_path|index_path)$
+
