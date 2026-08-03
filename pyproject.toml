@@ -59,8 +59,12 @@ include = [
   "/licenses",
   "/action.yml",
   "/LICENSE.md",
+  "/MAINTAINERS.md",
   "/NOTICE.md",
+  "/CHANGELOG.md",
+  "/CONTRIBUTING.md",
   "/README.md",
+  "/SECURITY.md",
 ]
 
 [tool.hatch.build.targets.wheel]
